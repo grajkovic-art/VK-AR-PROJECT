@@ -73,6 +73,8 @@
 
   <!-- + BUTTON -->
   <button id="addBtn">+</button>
+  <button id="prevBtn" style="position: fixed; bottom: 20px; left: 20px;">⬅️</button>
+  <button id="nextBtn" style="position: fixed; bottom: 20px; left: 80px;">➡️</button>
 
   <!-- INPUT UI -->
   <div id="inputBox">
@@ -81,27 +83,60 @@
   </div>
 
   <script>
-    const addBtn = document.getElementById("addBtn");
-    const inputBox = document.getElementById("inputBox");
-    const userInput = document.getElementById("userInput");
-    const textEntity = document.getElementById("messageText");
+  const addBtn = document.getElementById("addBtn");
+  const inputBox = document.getElementById("inputBox");
+  const userInput = document.getElementById("userInput");
+  const textEntity = document.getElementById("messageText");
 
-    // Show input
-    addBtn.onclick = () => {
-      inputBox.style.display = "block";
-    };
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
 
-    // Save text to AR
-    function saveText() {
-      const value = userInput.value;
+  // STORE MESSAGES
+  let messages = ["Hello world"];
+  let currentIndex = 0;
 
-      if (value.trim() !== "") {
-        textEntity.setAttribute("value", value);
-        userInput.value = "";
-        inputBox.style.display = "none";
-      }
+  // Show current message
+  function updateDisplay() {
+    textEntity.setAttribute("value", messages[currentIndex]);
+  }
+
+  // Show input
+  addBtn.onclick = () => {
+    inputBox.style.display = "block";
+  };
+
+  // Save new message
+  function saveText() {
+    const value = userInput.value;
+
+    if (value.trim() !== "") {
+      messages.push(value); // add new message
+      currentIndex = messages.length - 1; // go to latest
+      updateDisplay();
+
+      userInput.value = "";
+      inputBox.style.display = "none";
     }
-  </script>
+  }
+
+  // PREVIOUS message
+  prevBtn.onclick = () => {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateDisplay();
+    }
+  };
+
+  // NEXT message
+  nextBtn.onclick = () => {
+    if (currentIndex < messages.length - 1) {
+      currentIndex++;
+      updateDisplay();
+      prevBtn.disabled = currentIndex === 0;
+      nextBtn.disabled = currentIndex === messages.length - 1;
+    }
+  };
+</script>
 
 </body>
 </html>
