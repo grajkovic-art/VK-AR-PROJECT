@@ -53,7 +53,36 @@
     
     <a-marker preset="hiro">
 
-      <a-box position="0 0.5 0" color="black"></a-box>
+  <!-- 3D BOOK MODEL -->
+  <a-entity 
+    id="book"
+    gltf-model="book.glb"
+    position="0 0 0"
+    scale="0.5 0.5 0.5"
+    rotation="0 0 0">
+  </a-entity>
+
+  <a-entity 
+  id="book"
+  gltf-model="book.glb"
+  position="0 0 0"
+  scale="0.5 0.5 0.5"
+  rotation="0 0 0"
+  animation="property: rotation; to: 0 90 0; dur: 1000; easing: easeOutQuad">
+</a-entity>
+
+  <!-- TEXT ON PAGE -->
+  <a-text 
+    id="messageText"
+    value="Hello world"
+    color="black"
+    align="center"
+    position="0 0.1 0.2"
+    rotation="-90 0 0"
+    scale="0.5 0.5 0.5">
+  </a-text>
+
+</a-marker>
 
       <!-- TEXT THAT WILL CHANGE -->
       <a-text 
