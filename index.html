@@ -81,7 +81,9 @@
     <input type="text" id="userInput" placeholder="Write message..." />
     <button class="save" onclick="saveText()">Save</button>
   </div>
-
+<div id="leftHint">←</div>
+<div id="rightHint">→</div>
+  
   <script>
   const addBtn = document.getElementById("addBtn");
   const inputBox = document.getElementById("inputBox");
@@ -132,10 +134,108 @@
     if (currentIndex < messages.length - 1) {
       currentIndex++;
       updateDisplay();
-      prevBtn.disabled = currentIndex === 0;
-      nextBtn.disabled = currentIndex === messages.length - 1;
     }
   };
+
+  let startX = 0;
+let endX = 0;
+
+document.addEventListener("touchstart", (e) => {
+  startX = e.touches[0].clientX;
+});
+
+document.addEventListener("touchend", (e) => {
+  endX = e.changedTouches[0].clientX;
+  handleSwipe();
+});
+
+function handleSwipe() {
+  const diff = startX - endX;
+
+  // swipe LEFT (next older message)
+  if (diff > 50) {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateDisplay();
+    }
+  }
+
+  // swipe RIGHT (go forward/newer)
+  if (diff < -50) {
+    if (currentIndex < messages.length - 1) {
+      currentIndex++;
+      updateDisplay();
+    }
+  }
+}
+const leftHint = document.getElementById("leftHint");
+const rightHint = document.getElementById("rightHint");
+
+document.addEventListener("touchstart", (e) => {
+  startX = e.touches[0].clientX;
+
+  // show hints
+  leftHint.style.opacity = 0.5;
+  rightHint.style.opacity = 0.5;
+});
+
+document.addEventListener("touchend", (e) => {
+  endX = e.changedTouches[0].clientX;
+
+  // hide hints
+  leftHint.style.opacity = 0;
+  rightHint.style.opacity = 0;
+
+  handleSwipe();
+});
+
+function handleSwipe() {
+  const diff = startX - endX;
+
+  // SWIPE LEFT → older message
+  if (diff > 50 && currentIndex > 0) {
+    animateSlide("left");
+  }
+
+  // SWIPE RIGHT → newer message
+  if (diff < -50 && currentIndex < messages.length - 1) {
+    animateSlide("right");
+  }
+}
+
+function animateSlide(direction) {
+  const outX = direction === "left" ? -1 : 1;
+  const inX = direction === "left" ? 1 : -1;
+
+  // animate current text out
+  textEntity.setAttribute("animation", {
+    property: "position",
+    to: `${outX} 1.01 0`,
+    dur: 200,
+    easing: "easeInQuad"
+  });
+
+  setTimeout(() => {
+    // change message
+    if (direction === "left") currentIndex--;
+    else currentIndex++;
+
+    textEntity.setAttribute("value", messages[currentIndex]);
+
+    // move text to opposite side
+    textEntity.setAttribute("position", `${inX} 1.01 0`);
+
+    // animate back to center
+    textEntity.setAttribute("animation", {
+      property: "position",
+      to: `0 1.01 0`,
+      dur: 200,
+      easing: "easeOutQuad"
+    });
+
+  }, 200);
+}
+
 </script>
 
 </body>
