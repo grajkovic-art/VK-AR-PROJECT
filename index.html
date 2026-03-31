@@ -2,22 +2,15 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AR Wall Carousel</title>
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-  <style>
-    body {
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-      margin: 0;
-      overflow: hidden;
-    }
-    <link rel="stylesheet" href="style.css">
-  <a-marker preset="hiro">
-
-    <!-- ===================== -->
-    <!-- WELCOME -->
   <a-scene
     embedded
     vr-mode-ui="enabled: false"
@@ -25,32 +18,16 @@
     cursor="rayOrigin: mouse"
     raycaster="objects: .paper"
     arjs="sourceType: webcam; debugUIEnabled: false;">
-    <a-entity id="welcomeGroup" position="0 0 0.8">
 
-      <a-text value="Welcome"
-        color="white"
-        align="center"
-        scale="2.2 2.2 2.2"
-        position="0 0 0.01">
+    <a-marker preset="hiro">
+
+      <!-- Welcome title on horizontal marker level -->
       <a-entity id="welcomeGroup" position="0 0.35 0">
-        <a-plane
-          width="1.9"
-          height="0.45"
-          color="white"
-          opacity="0.95"
-          position="0 0 -0.02">
-        </a-plane>
+        <a-plane width="1.9" height="0.45" color="white" opacity="0.95" position="0 0 -0.02"></a-plane>
+        <a-text value="Welcome" color="black" align="center" width="3.2" position="0 0 0"></a-text>
+      </a-entity>
 
-    <!-- ===================== -->
-    <!-- CURVED PAPERS -->
-          width="3.2"
-          position="0 0 0">
-    <a-entity id="circleGroup" position="0 0 0.8" visible="false">
-      <a-plane class="paper" position="-1 0 0.3" rotation="0 25 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
-
-      <a-plane class="paper" position="-0.5 0 0.5" rotation="0 10 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
-
-      <a-plane class="paper" position="0 0 0.6" rotation="0 0 0" width="0.7" height="0.9" color="#4FC3F7"></a-plane>
+      <!-- Horizontal spinning paper ring -->
       <a-entity id="circleGroup" position="0 0.2 0" visible="false">
         <a-plane class="paper" position="0.95 0 0" rotation="0 -90 0" width="0.55" height="0.75" color="#FF8A80"></a-plane>
         <a-plane class="paper" position="0.67 0 -0.67" rotation="0 -135 0" width="0.55" height="0.75" color="#FFD54F"></a-plane>
@@ -60,53 +37,24 @@
         <a-plane class="paper" position="-0.67 0 0.67" rotation="0 45 0" width="0.55" height="0.75" color="#FFB74D"></a-plane>
         <a-plane class="paper" position="0 0 0.95" rotation="0 0 0" width="0.55" height="0.75" color="#A1887F"></a-plane>
         <a-plane class="paper" position="0.67 0 0.67" rotation="0 -45 0" width="0.55" height="0.75" color="#90A4AE"></a-plane>
+      </a-entity>
 
-      <a-text id="msgStroke"
-        value="I am angry"
-      <!-- FOCUS MODE -->
-        align="center"
+      <!-- Focus mode in front of marker on same horizontal baseline -->
       <a-entity id="focusedSlot" position="0 0.2 0.45" visible="false">
         <a-plane id="focusedPaper" width="0.7" height="0.9" color="#FF8A80"></a-plane>
 
         <a-entity id="messageGroup" position="0 0 0.02" visible="false">
-          <a-plane
-            width="1.3"
-            height="0.28"
-            color="white"
-            opacity="0.95"
-            position="0 0.06 0">
-          </a-plane>
-          <a-text
-            value="I am angry"
-            color="black"
-            align="center"
-            width="2.4"
-            position="0 0.06 0.01">
-          </a-text>
+          <a-plane width="1.3" height="0.28" color="white" opacity="0.95" position="0 0.06 0"></a-plane>
+          <a-text value="I am angry" color="black" align="center" width="2.4" position="0 0.06 0.01"></a-text>
         </a-entity>
       </a-entity>
 
-      <!-- Optional center pole to communicate trigger position -->
-      <a-cylinder
-        position="0 0.12 0"
-        radius="0.03"
-        height="0.24"
-        color="#222222">
-      </a-cylinder>
+      <a-cylinder position="0 0.12 0" radius="0.03" height="0.24" color="#222222"></a-cylinder>
 
-      <!-- Tap hint -->
-      <a-text id="hintText"
-        value="Tap screen"
-        color="white"
-        align="center"
-        width="1.8"
-        position="0 -0.25 0"
-        visible="true">
-      </a-text>
+      <a-text id="hintText" value="Tap screen" color="white" align="center" width="1.8" position="0 -0.25 0" visible="true"></a-text>
 
     </a-marker>
 
-    <!-- CAMERA -->
     <a-entity camera>
       <a-cursor color="#FFFFFF" opacity="0.55" fuse="false" scale="0.6 0.6 0.6"></a-cursor>
     </a-entity>
@@ -115,112 +63,106 @@
 
   <button id="addBtn" aria-label="Add message">+</button>
 
-  <!-- ===================== -->
-  <!-- JAVASCRIPT -->
-  <!-- ===================== -->
   <script>
+    let state = "title";
 
-  let state = "title";
+    const welcome = document.getElementById("welcomeGroup");
+    const circle = document.getElementById("circleGroup");
+    const hint = document.getElementById("hintText");
+    const focusedSlot = document.getElementById("focusedSlot");
+    const focusedPaper = document.getElementById("focusedPaper");
+    const messageGroup = document.getElementById("messageGroup");
+    const papers = document.querySelectorAll(".paper");
 
-  const welcome = document.getElementById("welcomeGroup");
-  const circle = document.getElementById("circleGroup");
-  const hint = document.getElementById("hintText");
-  const focusedSlot = document.getElementById("focusedSlot");
-  const focusedPaper = document.getElementById("focusedPaper");
-  const messageGroup = document.getElementById("messageGroup");
-  const papers = document.querySelectorAll(".paper");
+    const TAP_RESET_DELAY_MS = 50;
+    let lastPaperTap = 0;
 
-  const TAP_RESET_DELAY_MS = 50;
-  let lastPaperTap = 0;
-
-  function startCircleSpin() {
-    circle.setAttribute("animation__spin", {
-      property: "rotation",
-      to: "0 360 0",
-      loop: true,
-      dur: 7500,
-      easing: "linear"
-    });
-  }
-
-  function stopCircleSpin() {
-    circle.removeAttribute("animation__spin");
-  }
-
-  function showFocusForPaper(paper) {
-    const paperColor = paper.getAttribute("color");
-    focusedPaper.setAttribute("color", paperColor);
-
-    stopCircleSpin();
-    circle.setAttribute("visible", false);
-
-    focusedSlot.setAttribute("visible", true);
-    messageGroup.setAttribute("visible", true);
-    messageGroup.setAttribute("position", "0 0 0.02");
-    messageGroup.setAttribute("animation__in", {
-      property: "position",
-      from: "0 0 0.02",
-      to: "0 0 0.38",
-      dur: 280,
-      easing: "easeOutBack"
-    });
-
-    state = "focus";
-    hint.setAttribute("value", "Tap screen to return");
-  }
-
-  function hideFocusAndResume() {
-    messageGroup.setAttribute("animation__out", {
-      property: "position",
-      from: "0 0 0.38",
-      to: "0 0 0.02",
-      dur: 220,
-      easing: "easeInQuad"
-    });
-
-    setTimeout(() => {
-      messageGroup.setAttribute("visible", false);
-      focusedSlot.setAttribute("visible", false);
-      circle.setAttribute("visible", true);
-      startCircleSpin();
-      state = "papers";
-      hint.setAttribute("value", "Tap a paper");
-    }, 230);
-  }
-
-  document.body.addEventListener("click", () => {
-    if (state === "title") {
-      welcome.setAttribute("visible", false);
-      circle.setAttribute("visible", true);
-      startCircleSpin();
-      state = "papers";
-      hint.setAttribute("value", "Tap a paper");
-      return;
+    function startCircleSpin() {
+      circle.setAttribute("animation__spin", {
+        property: "rotation",
+        to: "0 360 0",
+        loop: true,
+        dur: 7500,
+        easing: "linear"
+      });
     }
 
-    if (state === "focus") {
-      const elapsedSincePaperTap = Date.now() - lastPaperTap;
-      if (elapsedSincePaperTap < TAP_RESET_DELAY_MS) {
-        return;
-      }
-      hideFocusAndResume();
+    function stopCircleSpin() {
+      circle.removeAttribute("animation__spin");
     }
-  });
 
-  papers.forEach((paper) => {
-    paper.addEventListener("click", (event) => {
-      event.stopPropagation();
+    function showFocusForPaper(paper) {
+      const paperColor = paper.getAttribute("color");
+      focusedPaper.setAttribute("color", paperColor);
 
-      if (state !== "papers") {
+      stopCircleSpin();
+      circle.setAttribute("visible", false);
+
+      focusedSlot.setAttribute("visible", true);
+      messageGroup.setAttribute("visible", true);
+      messageGroup.setAttribute("position", "0 0 0.02");
+      messageGroup.setAttribute("animation__in", {
+        property: "position",
+        from: "0 0 0.02",
+        to: "0 0 0.38",
+        dur: 280,
+        easing: "easeOutBack"
+      });
+
+      state = "focus";
+      hint.setAttribute("value", "Tap screen to return");
+    }
+
+    function hideFocusAndResume() {
+      messageGroup.setAttribute("animation__out", {
+        property: "position",
+        from: "0 0 0.38",
+        to: "0 0 0.02",
+        dur: 220,
+        easing: "easeInQuad"
+      });
+
+      setTimeout(() => {
+        messageGroup.setAttribute("visible", false);
+        focusedSlot.setAttribute("visible", false);
+        circle.setAttribute("visible", true);
+        startCircleSpin();
+        state = "papers";
+        hint.setAttribute("value", "Tap a paper");
+      }, 230);
+    }
+
+    document.body.addEventListener("click", () => {
+      if (state === "title") {
+        welcome.setAttribute("visible", false);
+        circle.setAttribute("visible", true);
+        startCircleSpin();
+        state = "papers";
+        hint.setAttribute("value", "Tap a paper");
         return;
       }
 
-      lastPaperTap = Date.now();
-      showFocusForPaper(paper);
+      if (state === "focus") {
+        const elapsedSincePaperTap = Date.now() - lastPaperTap;
+        if (elapsedSincePaperTap < TAP_RESET_DELAY_MS) {
+          return;
+        }
+        hideFocusAndResume();
+      }
     });
-  });
 
+    papers.forEach((paper) => {
+      paper.addEventListener("click", (event) => {
+        event.stopPropagation();
+
+        if (state !== "papers") {
+          return;
+        }
+
+        lastPaperTap = Date.now();
+        showFocusForPaper(paper);
+      });
+    });
   </script>
-
-  </body>
-  </html>
+</body>
+</html>
