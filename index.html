@@ -9,21 +9,22 @@
 
   <style>
     body {
+    <meta name="viewport" content="width=device-width, initial-scale=1">
       margin: 0;
       overflow: hidden;
     }
-  </style>
-</head>
-
-<body>
-
-<a-scene embedded arjs="sourceType: webcam;">
-
+    <link rel="stylesheet" href="style.css">
   <a-marker preset="hiro">
 
     <!-- ===================== -->
     <!-- WELCOME -->
-    <!-- ===================== -->
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true"
+    cursor="rayOrigin: mouse"
+    raycaster="objects: .paper"
+    arjs="sourceType: webcam; debugUIEnabled: false;">
     <a-entity id="welcomeGroup" position="0 0 0.8">
 
       <a-text value="Welcome"
@@ -31,151 +32,195 @@
         align="center"
         scale="2.2 2.2 2.2"
         position="0 0 0.01">
-      </a-text>
-
-      <a-text value="Welcome"
-        color="black"
-        align="center"
-        scale="2 2 2">
-      </a-text>
-
-    </a-entity>
+      <a-entity id="welcomeGroup" position="0 0.35 0">
+        <a-plane
+          width="1.9"
+          height="0.45"
+          color="white"
+          opacity="0.95"
+          position="0 0 -0.02">
+        </a-plane>
 
     <!-- ===================== -->
     <!-- CURVED PAPERS -->
-    <!-- ===================== -->
+          width="3.2"
+          position="0 0 0">
     <a-entity id="circleGroup" position="0 0 0.8" visible="false">
-
       <a-plane class="paper" position="-1 0 0.3" rotation="0 25 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
 
       <a-plane class="paper" position="-0.5 0 0.5" rotation="0 10 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
 
       <a-plane class="paper" position="0 0 0.6" rotation="0 0 0" width="0.7" height="0.9" color="#4FC3F7"></a-plane>
-
-      <a-plane class="paper" position="0.5 0 0.5" rotation="0 -10 0" width="0.6" height="0.8" color="#81C784"></a-plane>
-
-      <a-plane class="paper" position="1 0 0.3" rotation="0 -25 0" width="0.6" height="0.8" color="#BA68C8"></a-plane>
-
-    </a-entity>
-
-    <!-- ===================== -->
-    <!-- MESSAGE -->
-    <!-- ===================== -->
-    <a-entity id="messageGroup" visible="false">
+      <a-entity id="circleGroup" position="0 0.2 0" visible="false">
+        <a-plane class="paper" position="0.95 0 0" rotation="0 -90 0" width="0.55" height="0.75" color="#FF8A80"></a-plane>
+        <a-plane class="paper" position="0.67 0 -0.67" rotation="0 -135 0" width="0.55" height="0.75" color="#FFD54F"></a-plane>
+        <a-plane class="paper" position="0 0 -0.95" rotation="0 180 0" width="0.55" height="0.75" color="#81C784"></a-plane>
+        <a-plane class="paper" position="-0.67 0 -0.67" rotation="0 135 0" width="0.55" height="0.75" color="#4FC3F7"></a-plane>
+        <a-plane class="paper" position="-0.95 0 0" rotation="0 90 0" width="0.55" height="0.75" color="#BA68C8"></a-plane>
+        <a-plane class="paper" position="-0.67 0 0.67" rotation="0 45 0" width="0.55" height="0.75" color="#FFB74D"></a-plane>
+        <a-plane class="paper" position="0 0 0.95" rotation="0 0 0" width="0.55" height="0.75" color="#A1887F"></a-plane>
+        <a-plane class="paper" position="0.67 0 0.67" rotation="0 -45 0" width="0.55" height="0.75" color="#90A4AE"></a-plane>
 
       <a-text id="msgStroke"
         value="I am angry"
+      <!-- FOCUS MODE -->
+        align="center"
+      <a-entity id="focusedSlot" position="0 0.2 0.45" visible="false">
+        <a-plane id="focusedPaper" width="0.7" height="0.9" color="#FF8A80"></a-plane>
+
+        <a-entity id="messageGroup" position="0 0 0.02" visible="false">
+          <a-plane
+            width="1.3"
+            height="0.28"
+            color="white"
+            opacity="0.95"
+            position="0 0.06 0">
+          </a-plane>
+          <a-text
+            value="I am angry"
+            color="black"
+            align="center"
+            width="2.4"
+            position="0 0.06 0.01">
+          </a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Optional center pole to communicate trigger position -->
+      <a-cylinder
+        position="0 0.12 0"
+        radius="0.03"
+        height="0.24"
+        color="#222222">
+      </a-cylinder>
+
+      <!-- Tap hint -->
+      <a-text id="hintText"
+        value="Tap screen"
         color="white"
         align="center"
-        scale="1.5 1.5 1.5"
-        position="0 0 1.01">
+        width="1.8"
+        position="0 -0.25 0"
+        visible="true">
       </a-text>
 
-      <a-text id="msgText"
-        value="I am angry"
-        color="black"
-        align="center"
-        scale="1.4 1.4 1.4"
-        position="0 0 1">
-      </a-text>
+    </a-marker>
 
+    <!-- CAMERA -->
+    <a-entity camera>
+      <a-cursor color="#FFFFFF" opacity="0.55" fuse="false" scale="0.6 0.6 0.6"></a-cursor>
     </a-entity>
 
-  </a-marker>
+  </a-scene>
 
-  <a-entity camera></a-entity>
+  <button id="addBtn" aria-label="Add message">+</button>
 
-</a-scene>
+  <!-- ===================== -->
+  <!-- JAVASCRIPT -->
+  <!-- ===================== -->
+  <script>
 
-<!-- ===================== -->
-<!-- JAVASCRIPT -->
-<!-- ===================== -->
-<script>
+  let state = "title";
 
-// STATE
-let state = "title";
+  const welcome = document.getElementById("welcomeGroup");
+  const circle = document.getElementById("circleGroup");
+  const hint = document.getElementById("hintText");
+  const focusedSlot = document.getElementById("focusedSlot");
+  const focusedPaper = document.getElementById("focusedPaper");
+  const messageGroup = document.getElementById("messageGroup");
+  const papers = document.querySelectorAll(".paper");
 
-// ELEMENTS
-const welcome = document.getElementById("welcomeGroup");
-const circle = document.getElementById("circleGroup");
-const messageGroup = document.getElementById("messageGroup");
+  const TAP_RESET_DELAY_MS = 50;
+  let lastPaperTap = 0;
 
-// ROTATION CONTROL
-let currentRotation = 0;
-
-// =====================
-// ROTATION FUNCTIONS
-// =====================
-function rotateLeft() {
-  currentRotation += 20;
-  updateRotation();
-}
-
-function rotateRight() {
-  currentRotation -= 20;
-  updateRotation();
-}
-
-function updateRotation() {
-  circle.setAttribute("animation", {
-    property: "rotation",
-    to: `0 ${currentRotation} 0`,
-    dur: 300,
-    easing: "easeOutQuad"
-  });
-}
-
-// =====================
-// TAP (STATE CONTROL)
-// =====================
-document.body.addEventListener("click", () => {
-
-  // TITLE → SHOW PAPERS
-  if (state === "title") {
-    welcome.setAttribute("visible", false);
-    circle.setAttribute("visible", true);
-    state = "papers";
+  function startCircleSpin() {
+    circle.setAttribute("animation__spin", {
+      property: "rotation",
+      to: "0 360 0",
+      loop: true,
+      dur: 7500,
+      easing: "linear"
+    });
   }
 
-  // FOCUS → BACK
-  else if (state === "focus") {
-    messageGroup.setAttribute("visible", false);
-    state = "papers";
+  function stopCircleSpin() {
+    circle.removeAttribute("animation__spin");
   }
 
-});
+  function showFocusForPaper(paper) {
+    const paperColor = paper.getAttribute("color");
+    focusedPaper.setAttribute("color", paperColor);
 
-// =====================
-// SWIPE (STEP 3 - HERE)
-// =====================
-let startX = 0;
+    stopCircleSpin();
+    circle.setAttribute("visible", false);
 
-document.addEventListener("touchstart", e => {
-  startX = e.touches[0].clientX;
-});
-
-document.addEventListener("touchend", e => {
-  let endX = e.changedTouches[0].clientX;
-
-  if (endX - startX > 50) {
-    rotateRight(); // swipe right
-  } 
-  else if (startX - endX > 50) {
-    rotateLeft(); // swipe left
-  }
-});
-
-// =====================
-// OPTIONAL TAP TO SHOW MESSAGE
-// =====================
-document.addEventListener("dblclick", () => {
-  if (state === "papers") {
+    focusedSlot.setAttribute("visible", true);
     messageGroup.setAttribute("visible", true);
+    messageGroup.setAttribute("position", "0 0 0.02");
+    messageGroup.setAttribute("animation__in", {
+      property: "position",
+      from: "0 0 0.02",
+      to: "0 0 0.38",
+      dur: 280,
+      easing: "easeOutBack"
+    });
+
     state = "focus";
+    hint.setAttribute("value", "Tap screen to return");
   }
-});
 
-</script>
+  function hideFocusAndResume() {
+    messageGroup.setAttribute("animation__out", {
+      property: "position",
+      from: "0 0 0.38",
+      to: "0 0 0.02",
+      dur: 220,
+      easing: "easeInQuad"
+    });
 
-</body>
-</html>
+    setTimeout(() => {
+      messageGroup.setAttribute("visible", false);
+      focusedSlot.setAttribute("visible", false);
+      circle.setAttribute("visible", true);
+      startCircleSpin();
+      state = "papers";
+      hint.setAttribute("value", "Tap a paper");
+    }, 230);
+  }
+
+  document.body.addEventListener("click", () => {
+    if (state === "title") {
+      welcome.setAttribute("visible", false);
+      circle.setAttribute("visible", true);
+      startCircleSpin();
+      state = "papers";
+      hint.setAttribute("value", "Tap a paper");
+      return;
+    }
+
+    if (state === "focus") {
+      const elapsedSincePaperTap = Date.now() - lastPaperTap;
+      if (elapsedSincePaperTap < TAP_RESET_DELAY_MS) {
+        return;
+      }
+      hideFocusAndResume();
+    }
+  });
+
+  papers.forEach((paper) => {
+    paper.addEventListener("click", (event) => {
+      event.stopPropagation();
+
+      if (state !== "papers") {
+        return;
+      }
+
+      lastPaperTap = Date.now();
+      showFocusForPaper(paper);
+    });
+  });
+
+  </script>
+
+  </body>
+  </html>
