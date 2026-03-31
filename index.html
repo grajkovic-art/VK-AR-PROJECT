@@ -51,16 +51,21 @@
     <!-- ===================== -->
     <a-entity id="circleGroup" position="0 0 1" visible="false">
 
-      <a-plane class="paper" position="1 0 0" rotation="0 -90 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
-      <a-plane class="paper" position="0.7 0 -0.7" rotation="0 -135 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
-      <a-plane class="paper" position="0 0 -1" rotation="0 180 0" width="0.6" height="0.8" color="#81C784"></a-plane>
-      <a-plane class="paper" position="-0.7 0 -0.7" rotation="0 135 0" width="0.6" height="0.8" color="#4FC3F7"></a-plane>
-      <a-plane class="paper" position="-1 0 0" rotation="0 90 0" width="0.6" height="0.8" color="#BA68C8"></a-plane>
-      <a-plane class="paper" position="-0.7 0 0.7" rotation="0 45 0" width="0.6" height="0.8" color="#FFB74D"></a-plane>
-      <a-plane class="paper" position="0 0 1" rotation="0 0 0" width="0.6" height="0.8" color="#A1887F"></a-plane>
-      <a-plane class="paper" position="0.7 0 0.7" rotation="0 -45 0" width="0.6" height="0.8" color="#90A4AE"></a-plane>
+  <a-plane class="paper" position="-1.2 0 0" rotation="0 20 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
 
-    </a-entity>
+  <a-plane class="paper" position="-0.8 0 0.2" rotation="0 10 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
+
+  <a-plane class="paper" position="-0.4 0 0.3" rotation="0 5 0" width="0.6" height="0.8" color="#81C784"></a-plane>
+
+  <a-plane class="paper" position="0 0 0.35" rotation="0 0 0" width="0.7" height="0.9" color="#4FC3F7"></a-plane>
+
+  <a-plane class="paper" position="0.4 0 0.3" rotation="0 -5 0" width="0.6" height="0.8" color="#BA68C8"></a-plane>
+
+  <a-plane class="paper" position="0.8 0 0.2" rotation="0 -10 0" width="0.6" height="0.8" color="#FFB74D"></a-plane>
+
+  <a-plane class="paper" position="1.2 0 0" rotation="0 -20 0" width="0.6" height="0.8" color="#90A4AE"></a-plane>
+
+</a-entity>
 
     <!-- ===================== -->
     <!-- MESSAGE (FLOATS OUT) -->
@@ -117,12 +122,12 @@ let selectedPaper = null;
 // ROTATION
 // =====================
 function startCircleSpin() {
-  circle.setAttribute("animation", {
-    property: "rotation",
-    to: "0 360 0",
-    loop: true,
-    dur: 8000,
-    easing: "linear"
+  circle.setAttribute("animation__rotate", {
+  property: "rotation",
+  dir: "alternate",
+  dur: 3000,
+  loop: true,
+  to: "0 5 0"
   });
 }
 
