@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AR Circle Prototype</title>
+  <title>AR Wall Experience</title>
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -23,18 +23,22 @@
   <a-marker preset="hiro">
 
     <!-- ===================== -->
-    <!-- WELCOME -->
+    <!-- WELCOME (NOW IN FRONT OF WALL) -->
     <!-- ===================== -->
-    <a-entity id="welcomeGroup" position="0 1 0">
+    <a-entity id="welcomeGroup" position="0 0 0.8">
 
-      <a-text value="Welcome"
+      <!-- stroke -->
+      <a-text 
+        value="Welcome"
         color="white"
         align="center"
         scale="2.2 2.2 2.2"
-        position="0 0 -0.01">
+        position="0 0 0.01">
       </a-text>
 
-      <a-text value="Welcome"
+      <!-- main -->
+      <a-text 
+        value="Welcome"
         color="black"
         align="center"
         scale="2 2 2">
@@ -43,9 +47,9 @@
     </a-entity>
 
     <!-- ===================== -->
-    <!-- CIRCLE OF PAPERS -->
+    <!-- CIRCLE SYSTEM (IN FRONT OF WALL) -->
     <!-- ===================== -->
-    <a-entity id="circleGroup" position="0 0.5 0" visible="false">
+    <a-entity id="circleGroup" position="0 0 1" visible="false">
 
       <a-plane class="paper" position="1 0 0" rotation="0 -90 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
       <a-plane class="paper" position="0.7 0 -0.7" rotation="0 -135 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
@@ -59,24 +63,28 @@
     </a-entity>
 
     <!-- ===================== -->
-    <!-- MESSAGE -->
+    <!-- MESSAGE (FLOATS OUT) -->
     <!-- ===================== -->
     <a-entity id="messageGroup" visible="false">
 
-      <a-text id="msgStroke"
+      <!-- stroke -->
+      <a-text 
+        id="msgStroke"
         value="I am angry"
         color="white"
         align="center"
         scale="1.5 1.5 1.5"
-        position="0 0.8 0.01">
+        position="0 0 1.21">
       </a-text>
 
-      <a-text id="msgText"
+      <!-- main -->
+      <a-text 
+        id="msgText"
         value="I am angry"
         color="black"
         align="center"
         scale="1.4 1.4 1.4"
-        position="0 0.8 0">
+        position="0 0 1.2">
       </a-text>
 
     </a-entity>
@@ -100,6 +108,9 @@ const circle = document.getElementById("circleGroup");
 const messageGroup = document.getElementById("messageGroup");
 const papers = document.querySelectorAll(".paper");
 
+const msgText = document.getElementById("msgText");
+const msgStroke = document.getElementById("msgStroke");
+
 let selectedPaper = null;
 
 // =====================
@@ -120,11 +131,11 @@ function stopCircleSpin() {
 }
 
 // =====================
-// TAP GLOBAL (STATE MACHINE)
+// GLOBAL TAP
 // =====================
 document.body.addEventListener("click", () => {
 
-  // TITLE → SHOW PAPERS
+  // TITLE → PAPERS
   if (state === "title") {
     welcome.setAttribute("visible", false);
     circle.setAttribute("visible", true);
@@ -132,7 +143,7 @@ document.body.addEventListener("click", () => {
     state = "papers";
   }
 
-  // FOCUS → BACK TO CIRCLE
+  // FOCUS → BACK
   else if (state === "focus") {
 
     if (selectedPaper) {
@@ -155,10 +166,9 @@ document.body.addEventListener("click", () => {
 // =====================
 papers.forEach(paper => {
 
-  // store original position
-  paper.dataset.originalPosition = paper.getAttribute("position").x + " "
-    + paper.getAttribute("position").y + " "
-    + paper.getAttribute("position").z;
+  // save original position
+  const pos = paper.getAttribute("position");
+  paper.dataset.originalPosition = `${pos.x} ${pos.y} ${pos.z}`;
 
   paper.addEventListener("click", () => {
 
@@ -167,15 +177,27 @@ papers.forEach(paper => {
     stopCircleSpin();
     selectedPaper = paper;
 
-    // move to front
+    // move paper forward (towards user)
     paper.setAttribute("animation", {
       property: "position",
-      to: "0 0 0.6",
+      to: "0 0 1.3",
       dur: 300,
       easing: "easeOutQuad"
     });
 
-    // show message
+    // show message slightly in front
+    msgText.setAttribute("animation", {
+      property: "position",
+      to: "0 0 1.6",
+      dur: 300
+    });
+
+    msgStroke.setAttribute("animation", {
+      property: "position",
+      to: "0 0 1.61",
+      dur: 300
+    });
+
     messageGroup.setAttribute("visible", true);
 
     state = "focus";
