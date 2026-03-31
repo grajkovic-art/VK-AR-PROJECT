@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AR Prototype</title>
+  <title>AR Circle Prototype</title>
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -20,23 +20,21 @@
 <a-scene embedded arjs="sourceType: webcam;">
 
   <!-- MARKER -->
-  <a-marker preset="hiro" id="marker">
+  <a-marker preset="hiro">
 
     <!-- ===================== -->
     <!-- WELCOME -->
     <!-- ===================== -->
     <a-entity id="welcomeGroup" position="0 1 0">
 
-      <a-text 
-        value="Welcome"
+      <a-text value="Welcome"
         color="white"
         align="center"
         scale="2.2 2.2 2.2"
         position="0 0 -0.01">
       </a-text>
 
-      <a-text 
-        value="Welcome"
+      <a-text value="Welcome"
         color="black"
         align="center"
         scale="2 2 2">
@@ -45,17 +43,18 @@
     </a-entity>
 
     <!-- ===================== -->
-    <!-- PAPER -->
+    <!-- CIRCLE OF PAPERS -->
     <!-- ===================== -->
-    <a-entity id="paperGroup" visible="false">
+    <a-entity id="circleGroup" position="0 0.5 0" visible="false">
 
-      <a-plane 
-        id="paper"
-        position="0 0.5 0"
-        width="1"
-        height="0.7"
-        color="#FFD54F">
-      </a-plane>
+      <a-plane class="paper" position="1 0 0" rotation="0 -90 0" width="0.6" height="0.8" color="#FF8A80"></a-plane>
+      <a-plane class="paper" position="0.7 0 -0.7" rotation="0 -135 0" width="0.6" height="0.8" color="#FFD54F"></a-plane>
+      <a-plane class="paper" position="0 0 -1" rotation="0 180 0" width="0.6" height="0.8" color="#81C784"></a-plane>
+      <a-plane class="paper" position="-0.7 0 -0.7" rotation="0 135 0" width="0.6" height="0.8" color="#4FC3F7"></a-plane>
+      <a-plane class="paper" position="-1 0 0" rotation="0 90 0" width="0.6" height="0.8" color="#BA68C8"></a-plane>
+      <a-plane class="paper" position="-0.7 0 0.7" rotation="0 45 0" width="0.6" height="0.8" color="#FFB74D"></a-plane>
+      <a-plane class="paper" position="0 0 1" rotation="0 0 0" width="0.6" height="0.8" color="#A1887F"></a-plane>
+      <a-plane class="paper" position="0.7 0 0.7" rotation="0 -45 0" width="0.6" height="0.8" color="#90A4AE"></a-plane>
 
     </a-entity>
 
@@ -64,22 +63,20 @@
     <!-- ===================== -->
     <a-entity id="messageGroup" visible="false">
 
-      <a-text 
-        id="msgStroke"
+      <a-text id="msgStroke"
         value="I am angry"
         color="white"
         align="center"
         scale="1.5 1.5 1.5"
-        position="0 0.5 0.01">
+        position="0 0.8 0.01">
       </a-text>
 
-      <a-text 
-        id="msgText"
+      <a-text id="msgText"
         value="I am angry"
         color="black"
         align="center"
         scale="1.4 1.4 1.4"
-        position="0 0.5 0">
+        position="0 0.8 0">
       </a-text>
 
     </a-entity>
@@ -91,86 +88,98 @@
 
 </a-scene>
 
+<!-- ===================== -->
+<!-- JAVASCRIPT -->
+<!-- ===================== -->
 <script>
 
 let state = "title";
 
 const welcome = document.getElementById("welcomeGroup");
-const paperGroup = document.getElementById("paperGroup");
+const circle = document.getElementById("circleGroup");
 const messageGroup = document.getElementById("messageGroup");
-const paper = document.getElementById("paper");
-const msgText = document.getElementById("msgText");
-const msgStroke = document.getElementById("msgStroke");
+const papers = document.querySelectorAll(".paper");
 
-// START SPIN
-function startSpin() {
-  paper.setAttribute("animation", {
+let selectedPaper = null;
+
+// =====================
+// ROTATION
+// =====================
+function startCircleSpin() {
+  circle.setAttribute("animation", {
     property: "rotation",
     to: "0 360 0",
     loop: true,
-    dur: 4000,
+    dur: 8000,
     easing: "linear"
   });
 }
 
-// STOP SPIN
-function stopSpin() {
-  paper.removeAttribute("animation");
+function stopCircleSpin() {
+  circle.removeAttribute("animation");
 }
 
-// TAP INTERACTION
+// =====================
+// TAP GLOBAL (STATE MACHINE)
+// =====================
 document.body.addEventListener("click", () => {
 
-  // TITLE → PAPERS
+  // TITLE → SHOW PAPERS
   if (state === "title") {
     welcome.setAttribute("visible", false);
-    paperGroup.setAttribute("visible", true);
-    startSpin();
+    circle.setAttribute("visible", true);
+    startCircleSpin();
     state = "papers";
   }
 
-  // PAPERS → MESSAGE
-  else if (state === "papers") {
-    stopSpin();
-    messageGroup.setAttribute("visible", true);
-
-    msgText.setAttribute("animation", {
-      property: "position",
-      to: "0 0.8 0",
-      dur: 300
-    });
-
-    msgStroke.setAttribute("animation", {
-      property: "position",
-      to: "0 0.8 0.01",
-      dur: 300
-    });
-
-    state = "focus";
-  }
-
-  // MESSAGE → BACK
+  // FOCUS → BACK TO CIRCLE
   else if (state === "focus") {
 
-    msgText.setAttribute("animation", {
-      property: "position",
-      to: "0 0.5 0",
-      dur: 300
-    });
+    if (selectedPaper) {
+      selectedPaper.setAttribute("animation", {
+        property: "position",
+        to: selectedPaper.dataset.originalPosition,
+        dur: 300
+      });
+    }
 
-    msgStroke.setAttribute("animation", {
-      property: "position",
-      to: "0 0.5 0.01",
-      dur: 300
-    });
-
-    setTimeout(() => {
-      messageGroup.setAttribute("visible", false);
-      startSpin();
-    }, 300);
-
+    messageGroup.setAttribute("visible", false);
+    startCircleSpin();
     state = "papers";
   }
+
+});
+
+// =====================
+// PAPER CLICK
+// =====================
+papers.forEach(paper => {
+
+  // store original position
+  paper.dataset.originalPosition = paper.getAttribute("position").x + " "
+    + paper.getAttribute("position").y + " "
+    + paper.getAttribute("position").z;
+
+  paper.addEventListener("click", () => {
+
+    if (state !== "papers") return;
+
+    stopCircleSpin();
+    selectedPaper = paper;
+
+    // move to front
+    paper.setAttribute("animation", {
+      property: "position",
+      to: "0 0 0.6",
+      dur: 300,
+      easing: "easeOutQuad"
+    });
+
+    // show message
+    messageGroup.setAttribute("visible", true);
+
+    state = "focus";
+  });
 
 });
 
