@@ -5,91 +5,104 @@
   <title>AR Prototype</title>
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; }
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
   </style>
 </head>
 
 <body>
 
-<a-scene
+<a-scene embedded arjs="sourceType: webcam;">
 
-  xr-mode-ui="enabled: true"
-  renderer="logarithmicDepthBuffer: true;"
-  webxr="requiredFeatures: hit-test">
-  
-  <!-- Camera -->
-  <a-entity camera look-controls></a-entity>
-  <a-box position="0 0 -1" color="red"></a-box>
+  <!-- MARKER -->
+  <a-marker preset="hiro" id="marker">
+
+    <!-- ===================== -->
+    <!-- WELCOME -->
+    <!-- ===================== -->
+    <a-entity id="welcomeGroup" position="0 1 0">
+
+      <a-text 
+        value="Welcome"
+        color="white"
+        align="center"
+        scale="2.2 2.2 2.2"
+        position="0 0 -0.01">
+      </a-text>
+
+      <a-text 
+        value="Welcome"
+        color="black"
+        align="center"
+        scale="2 2 2">
+      </a-text>
+
+    </a-entity>
+
+    <!-- ===================== -->
+    <!-- PAPER -->
+    <!-- ===================== -->
+    <a-entity id="paperGroup" visible="false">
+
+      <a-plane 
+        id="paper"
+        position="0 0.5 0"
+        width="1"
+        height="0.7"
+        color="#FFD54F">
+      </a-plane>
+
+    </a-entity>
+
+    <!-- ===================== -->
+    <!-- MESSAGE -->
+    <!-- ===================== -->
+    <a-entity id="messageGroup" visible="false">
+
+      <a-text 
+        id="msgStroke"
+        value="I am angry"
+        color="white"
+        align="center"
+        scale="1.5 1.5 1.5"
+        position="0 0.5 0.01">
+      </a-text>
+
+      <a-text 
+        id="msgText"
+        value="I am angry"
+        color="black"
+        align="center"
+        scale="1.4 1.4 1.4"
+        position="0 0.5 0">
+      </a-text>
+
+    </a-entity>
+
+  </a-marker>
+
+  <!-- CAMERA -->
+  <a-entity camera></a-entity>
+
 </a-scene>
-<a-entity id="welcomeGroup" position="0 1.5 -2">
-
-  <!-- stroke (fake highlight) -->
-  <a-text 
-    value="Welcome"
-    color="white"
-    align="center"
-    scale="2.2 2.2 2.2"
-    position="0 0 -0.01">
-  </a-text>
-
-  <!-- main text -->
-  <a-text 
-    value="Welcome"
-    color="black"
-    align="center"
-    scale="2 2 2">
-  </a-text>
-
-</a-entity>
-
-<a-entity id="paperGroup" visible="false">
-
-  <a-plane 
-    id="paper"
-    position="0 1.2 -2"
-    width="1"
-    height="0.7"
-    color="#FFD54F"
-    rotation="0 0 0">
-  </a-plane>
-
-</a-entity>
-
-<a-entity id="messageGroup" visible="false">
-
-  <!-- stroke -->
-  <a-text 
-    id="msgStroke"
-    value="I am angry"
-    color="white"
-    align="center"
-    scale="1.5 1.5 1.5"
-    position="0 1.2 -1.99">
-  </a-text>
-
-  <!-- main -->
-  <a-text 
-    id="msgText"
-    value="I am angry"
-    color="black"
-    align="center"
-    scale="1.4 1.4 1.4"
-    position="0 1.2 -2">
-  </a-text>
-
-</a-entity>
 
 <script>
+
 let state = "title";
 
 const welcome = document.getElementById("welcomeGroup");
 const paperGroup = document.getElementById("paperGroup");
 const messageGroup = document.getElementById("messageGroup");
 const paper = document.getElementById("paper");
+const msgText = document.getElementById("msgText");
+const msgStroke = document.getElementById("msgStroke");
 
-// SPIN animation
+// START SPIN
 function startSpin() {
   paper.setAttribute("animation", {
     property: "rotation",
@@ -100,14 +113,15 @@ function startSpin() {
   });
 }
 
+// STOP SPIN
 function stopSpin() {
   paper.removeAttribute("animation");
 }
 
-// TAP interaction
+// TAP INTERACTION
 document.body.addEventListener("click", () => {
 
-  // STATE 1 → TITLE
+  // TITLE → PAPERS
   if (state === "title") {
     welcome.setAttribute("visible", false);
     paperGroup.setAttribute("visible", true);
@@ -115,41 +129,38 @@ document.body.addEventListener("click", () => {
     state = "papers";
   }
 
-  // STATE 2 → FOCUS MESSAGE
+  // PAPERS → MESSAGE
   else if (state === "papers") {
     stopSpin();
-
     messageGroup.setAttribute("visible", true);
 
-    // animate text forward
-    document.getElementById("msgText").setAttribute("animation", {
+    msgText.setAttribute("animation", {
       property: "position",
-      to: "0 1.2 -1",
+      to: "0 0.8 0",
       dur: 300
     });
 
-    document.getElementById("msgStroke").setAttribute("animation", {
+    msgStroke.setAttribute("animation", {
       property: "position",
-      to: "0 1.2 -0.99",
+      to: "0 0.8 0.01",
       dur: 300
     });
 
     state = "focus";
   }
 
-  // STATE 3 → BACK TO SPIN
+  // MESSAGE → BACK
   else if (state === "focus") {
 
-    // move text back
-    document.getElementById("msgText").setAttribute("animation", {
+    msgText.setAttribute("animation", {
       property: "position",
-      to: "0 1.2 -2",
+      to: "0 0.5 0",
       dur: 300
     });
 
-    document.getElementById("msgStroke").setAttribute("animation", {
+    msgStroke.setAttribute("animation", {
       property: "position",
-      to: "0 1.2 -1.99",
+      to: "0 0.5 0.01",
       dur: 300
     });
 
@@ -162,6 +173,7 @@ document.body.addEventListener("click", () => {
   }
 
 });
+
 </script>
 
 </body>
