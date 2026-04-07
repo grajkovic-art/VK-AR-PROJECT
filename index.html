@@ -1,167 +1,207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AR Wall Carousel</title>
+<meta charset="UTF-8">
+<title>WebAR Messages</title>
 
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <link rel="stylesheet" href="style.css">
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+/* MESSAGE CONTAINER */
+#messageBox {
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 80%;
+
+  padding: 18px 28px;
+  color: white;
+  font-size: 18px;
+  text-align: center;
+
+  /* CORE STYLE (your Pinterest look) */
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+
+  border-radius: 40px;
+
+  /* soft glow */
+  box-shadow: 
+    0 0 20px rgba(255,255,255,0.15),
+    inset 0 0 10px rgba(255,255,255,0.1);
+
+  border: 2px solid rgba(255,255,255,0.4);
+
+  transition: all 0.3s ease;
+}
+
+/* ORGANIC CURVE EFFECT */
+#messageBox::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+
+  border-radius: 50px;
+
+  border: 2px solid rgba(255,255,255,0.2);
+
+  filter: blur(4px);
+}
+
+/* ADD BUTTON */
+#addBtn {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 65px;
+  height: 65px;
+
+  border-radius: 50%;
+  border: none;
+
+  font-size: 30px;
+  color: white;
+
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+
+  box-shadow: 0 0 20px rgba(255,255,255,0.3);
+
+  z-index: 10;
+}
+
+/* FADE ANIMATION */
+.fade {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+</style>
 </head>
+
 <body>
 
-  <a-scene
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true"
-    cursor="rayOrigin: mouse"
-    raycaster="objects: .paper"
-    arjs="sourceType: webcam; facingMode: environment; sourceWidth: 1280; sourceHeight: 720; debugUIEnabled: false;">
+<div id="messageBox">Scan the trigger</div>
+<button id="addBtn">+</button>
 
-    <a-marker preset="hiro">
+<a-scene embedded arjs>
 
-      <!-- Welcome title on horizontal marker level -->
-      <a-entity id="welcomeGroup" position="0 0.35 0">
-        <a-plane width="1.9" height="0.45" color="white" opacity="0.95" position="0 0 -0.02"></a-plane>
-        <a-text value="Welcome" color="black" align="center" width="3.2" position="0 0 0"></a-text>
-      </a-entity>
+  <!-- YOUR TRIGGER -->
+  <a-marker type="pattern" url="marker.patt" id="marker">
 
-      <!-- Horizontal spinning paper ring -->
-      <a-entity id="circleGroup" position="0 0.2 0" visible="false">
-        <a-plane class="paper" position="0.95 0 0" rotation="0 -90 0" width="0.55" height="0.75" color="#FF8A80"></a-plane>
-        <a-plane class="paper" position="0.67 0 -0.67" rotation="0 -135 0" width="0.55" height="0.75" color="#FFD54F"></a-plane>
-        <a-plane class="paper" position="0 0 -0.95" rotation="0 180 0" width="0.55" height="0.75" color="#81C784"></a-plane>
-        <a-plane class="paper" position="-0.67 0 -0.67" rotation="0 135 0" width="0.55" height="0.75" color="#4FC3F7"></a-plane>
-        <a-plane class="paper" position="-0.95 0 0" rotation="0 90 0" width="0.55" height="0.75" color="#BA68C8"></a-plane>
-        <a-plane class="paper" position="-0.67 0 0.67" rotation="0 45 0" width="0.55" height="0.75" color="#FFB74D"></a-plane>
-        <a-plane class="paper" position="0 0 0.95" rotation="0 0 0" width="0.55" height="0.75" color="#A1887F"></a-plane>
-        <a-plane class="paper" position="0.67 0 0.67" rotation="0 -45 0" width="0.55" height="0.75" color="#90A4AE"></a-plane>
-      </a-entity>
-
-      <!-- Focus mode in front of marker on same horizontal baseline -->
-      <a-entity id="focusedSlot" position="0 0.2 0.45" visible="false">
-        <a-plane id="focusedPaper" width="0.7" height="0.9" color="#FF8A80"></a-plane>
-
-        <a-entity id="messageGroup" position="0 0 0.02" visible="false">
-          <a-plane width="1.3" height="0.28" color="white" opacity="0.95" position="0 0.06 0"></a-plane>
-          <a-text value="I am angry" color="black" align="center" width="2.4" position="0 0.06 0.01"></a-text>
-        </a-entity>
-      </a-entity>
-
-      <a-cylinder position="0 0.12 0" radius="0.03" height="0.24" color="#222222"></a-cylinder>
-
-      <a-text id="hintText" value="Tap screen" color="white" align="center" width="1.8" position="0 -0.25 0" visible="true"></a-text>
-
-    </a-marker>
-
-    <a-entity camera>
-      <a-cursor color="#FFFFFF" opacity="0.55" fuse="false" scale="0.6 0.6 0.6"></a-cursor>
+    <!-- 3D MODEL -->
+    <a-entity 
+      id="model"
+      gltf-model="model.glb"
+      scale="0.5 0.5 0.5"
+      animation-mixer>
     </a-entity>
 
-  </a-scene>
+  </a-marker>
 
-  <button id="addBtn" aria-label="Add message">+</button>
+  <a-entity camera></a-entity>
+</a-scene>
 
-  <script>
-    let state = "title";
+<script>
 
-    const welcome = document.getElementById("welcomeGroup");
-    const circle = document.getElementById("circleGroup");
-    const hint = document.getElementById("hintText");
-    const focusedSlot = document.getElementById("focusedSlot");
-    const focusedPaper = document.getElementById("focusedPaper");
-    const messageGroup = document.getElementById("messageGroup");
-    const papers = document.querySelectorAll(".paper");
+/* -------------------------
+   MESSAGE SYSTEM
+------------------------- */
 
-    const TAP_RESET_DELAY_MS = 50;
-    let lastPaperTap = 0;
+let messages = [
+  "This is the first message",
+  "Try tapping left or right",
+  "Add your own message below"
+];
 
-    function startCircleSpin() {
-      circle.setAttribute("animation__spin", {
-        property: "rotation",
-        to: "0 360 0",
-        loop: true,
-        dur: 7500,
-        easing: "linear"
-      });
-    }
+let currentIndex = messages.length - 1;
+let started = false;
 
-    function stopCircleSpin() {
-      circle.removeAttribute("animation__spin");
-    }
+const messageBox = document.getElementById("messageBox");
+const marker = document.querySelector("#marker");
 
-    function showFocusForPaper(paper) {
-      const paperColor = paper.getAttribute("color");
-      focusedPaper.setAttribute("color", paperColor);
+/* -------------------------
+   SHOW MESSAGE
+------------------------- */
 
-      stopCircleSpin();
-      circle.setAttribute("visible", false);
+function showMessage() {
+  messageBox.classList.remove("fade");
+  void messageBox.offsetWidth;
+  messageBox.classList.add("fade");
 
-      focusedSlot.setAttribute("visible", true);
-      messageGroup.setAttribute("visible", true);
-      messageGroup.setAttribute("position", "0 0 0.02");
-      messageGroup.setAttribute("animation__in", {
-        property: "position",
-        from: "0 0 0.02",
-        to: "0 0 0.38",
-        dur: 280,
-        easing: "easeOutBack"
-      });
+  messageBox.innerText = messages[currentIndex];
+}
 
-      state = "focus";
-      hint.setAttribute("value", "Tap screen to return");
-    }
+/* -------------------------
+   TRIGGER DETECTION
+------------------------- */
 
-    function hideFocusAndResume() {
-      messageGroup.setAttribute("animation__out", {
-        property: "position",
-        from: "0 0 0.38",
-        to: "0 0 0.02",
-        dur: 220,
-        easing: "easeInQuad"
-      });
+marker.addEventListener("markerFound", () => {
+  if (!started) {
+    started = true;
 
-      setTimeout(() => {
-        messageGroup.setAttribute("visible", false);
-        focusedSlot.setAttribute("visible", false);
-        circle.setAttribute("visible", true);
-        startCircleSpin();
-        state = "papers";
-        hint.setAttribute("value", "Tap a paper");
-      }, 230);
-    }
+    setTimeout(() => {
+      showMessage();
+    }, 2000);
+  }
+});
 
-    document.body.addEventListener("click", () => {
-      if (state === "title") {
-        welcome.setAttribute("visible", false);
-        circle.setAttribute("visible", true);
-        startCircleSpin();
-        state = "papers";
-        hint.setAttribute("value", "Tap a paper");
-        return;
-      }
+marker.addEventListener("markerLost", () => {
+  messageBox.innerText = "Point camera to trigger";
+  started = false;
+});
 
-      if (state === "focus") {
-        const elapsedSincePaperTap = Date.now() - lastPaperTap;
-        if (elapsedSincePaperTap < TAP_RESET_DELAY_MS) {
-          return;
-        }
-        hideFocusAndResume();
-      }
-    });
+/* -------------------------
+   TOUCH NAVIGATION
+------------------------- */
 
-    papers.forEach((paper) => {
-      paper.addEventListener("click", (event) => {
-        event.stopPropagation();
+document.addEventListener("click", (e) => {
 
-        if (state !== "papers") {
-          return;
-        }
+  if (!started) return;
 
-        lastPaperTap = Date.now();
-        showFocusForPaper(paper);
-      });
-    });
-  </script>
+  const width = window.innerWidth;
+
+  if (e.clientX > width / 2) {
+    // RIGHT SIDE → older
+    if (currentIndex > 0) currentIndex--;
+  } else {
+    // LEFT SIDE → newer
+    if (currentIndex < messages.length - 1) currentIndex++;
+  }
+
+  showMessage();
+});
+
+/* -------------------------
+   ADD MESSAGE
+------------------------- */
+
+document.getElementById("addBtn").onclick = () => {
+
+  let text = prompt("Write your message:");
+
+  if (text && text.trim() !== "") {
+    messages.push(text);
+    currentIndex = messages.length - 1;
+    showMessage();
+  }
+};
+
+</script>
+
 </body>
 </html>
