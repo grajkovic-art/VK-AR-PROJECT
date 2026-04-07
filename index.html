@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>AR Platform - AR.js + A-Frame</title>
 		<link rel="stylesheet" href="style.css" />
 
@@ -125,7 +125,7 @@
 		</div>
 
 		<a-scene
-			arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+			arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; debugUIEnabled: false;"
 			renderer="antialias: true; alpha: true"
 			embedded
 			vr-mode-ui="enabled: false"
