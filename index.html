@@ -36,7 +36,8 @@
     <!-- Simple AR text with background flush to marker (back attached to trigger) -->
     <!-- pivot placed at the cube back-face center (marker plane) so rotation keeps back face flush -->
     <!-- pivot position: x=0, y=side/2, z=0  (side = 0.9 => y=0.45) -->
-    <a-entity id="text-group" position="0 0.45 0" rotation="0 90 0">
+    <!-- rotated to 270deg around Y so text appears on the opposite face -->
+    <a-entity id="text-group" position="0 0.45 0" rotation="0 270 0">
       <!-- cube centered at local z = side/2 so its back face is at local z=0 -->
       <a-box id="text-cube" position="0 0 0.45" width="0.9" height="0.9" depth="0.9" color="#222" opacity="0.95" material="side:double"></a-box>
 
