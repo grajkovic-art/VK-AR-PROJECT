@@ -10,93 +10,8 @@
 		<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
 		<script>
-			function isMobileDevice() {
-				return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-			}
-
 			function getVideoElement() {
 				return document.querySelector("video#arjs-video, video.arjs-video, video");
-			}
-
-			async function chooseWideRearCameraId() {
-				if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-					return null;
-				}
-
-				const devices = await navigator.mediaDevices.enumerateDevices();
-				const cams = devices.filter((d) => d.kind === "videoinput");
-
-				if (cams.length === 0) {
-					return null;
-				}
-
-				const rearLike = cams.filter((d) => /rear|back|environment|wide|ultra|main|1x/i.test(d.label));
-				const nonTele = rearLike.filter((d) => !/tele|zoom|macro|depth|tof/i.test(d.label));
-
-				if (nonTele.length > 0) {
-					return nonTele[0].deviceId;
-				}
-
-				if (rearLike.length > 0) {
-					return rearLike[0].deviceId;
-				}
-
-				return cams[0].deviceId;
-			}
-
-			async function switchVideoStreamToDevice(deviceId) {
-				if (!deviceId || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-					return false;
-				}
-
-				const videoEl = getVideoElement();
-				if (!videoEl) {
-					return false;
-				}
-
-				const screenAspect = window.innerWidth / Math.max(window.innerHeight, 1);
-				const stream = await navigator.mediaDevices.getUserMedia({
-					video: {
-						deviceId: { exact: deviceId },
-						aspectRatio: { ideal: screenAspect },
-						facingMode: { ideal: "environment" }
-					},
-					audio: false
-				});
-
-				const oldStream = videoEl.srcObject;
-				videoEl.srcObject = stream;
-				videoEl.setAttribute("playsinline", "true");
-				videoEl.muted = true;
-
-				try {
-					await videoEl.play();
-				} catch (_err) {
-					// Some mobile browsers require user gesture for play.
-				}
-
-				if (oldStream) {
-					oldStream.getTracks().forEach((track) => track.stop());
-				}
-
-				return true;
-			}
-
-			async function preferWideRearCamera() {
-				if (!isMobileDevice()) {
-					return false;
-				}
-
-				try {
-					const targetId = await chooseWideRearCameraId();
-					if (!targetId) {
-						return false;
-					}
-
-					return await switchVideoStreamToDevice(targetId);
-				} catch (_err) {
-					return false;
-				}
 			}
 
 			function applyCameraTuning() {
@@ -113,22 +28,17 @@
 				const track = tracks[0];
 				const capabilities = track.getCapabilities ? track.getCapabilities() : {};
 				const constraints = {};
-				const advanced = [];
+
+				if (capabilities.width) {
+					constraints.width = { ideal: 1920 };
+				}
+
+				if (capabilities.height) {
+					constraints.height = { ideal: 1080 };
+				}
 
 				if (capabilities.aspectRatio) {
-					constraints.aspectRatio = { ideal: window.innerWidth / Math.max(window.innerHeight, 1) };
-				}
-
-				if (capabilities.zoom) {
-					advanced.push({ zoom: capabilities.zoom.min || 1 });
-				}
-
-				if (capabilities.focusMode && capabilities.focusMode.includes("continuous")) {
-					advanced.push({ focusMode: "continuous" });
-				}
-
-				if (advanced.length > 0) {
-					constraints.advanced = advanced;
+					constraints.aspectRatio = { ideal: 16 / 9 };
 				}
 
 				if (Object.keys(constraints).length === 0) {
@@ -166,7 +76,6 @@
 					const modelContainer = document.getElementById("model-container");
 					const cycleButton = document.getElementById("cycle-shape");
 					const spinButton = document.getElementById("toggle-spin");
-					const wideCameraButton = document.getElementById("use-wide-camera");
 
 					const presets = [
 						{
@@ -240,16 +149,6 @@
 						}
 					});
 
-					wideCameraButton.addEventListener("click", async () => {
-						wideCameraButton.disabled = true;
-						const switched = await preferWideRearCamera();
-						wideCameraButton.textContent = switched ? "Wide Camera Active" : "Wide Camera Unavailable";
-						applyCameraTuning();
-						setTimeout(() => {
-							wideCameraButton.disabled = false;
-						}, 1200);
-					});
-
 					scene.addEventListener("loaded", () => {
 						setMarkerStatus(false);
 
@@ -261,11 +160,6 @@
 								clearInterval(tuner);
 							}
 						}, 350);
-
-						setTimeout(async () => {
-							await preferWideRearCamera();
-							applyCameraTuning();
-						}, 900);
 					});
 				}
 			});
@@ -278,12 +172,11 @@
 			<div class="controls">
 				<button id="cycle-shape" type="button">Change Shape</button>
 				<button id="toggle-spin" type="button">Pause Rotation</button>
-				<button id="use-wide-camera" type="button">Use Wide Camera</button>
 			</div>
 		</div>
 
 		<a-scene
-			arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled: false;"
+			arjs="trackingMethod: best; sourceType: webcam; facingMode: user; sourceWidth: 1920; sourceHeight: 1080; displayWidth: 1920; displayHeight: 1080; debugUIEnabled: false;"
 			renderer="antialias: true; alpha: true"
 			embedded
 			vr-mode-ui="enabled: false"
