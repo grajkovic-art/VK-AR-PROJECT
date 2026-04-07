@@ -35,13 +35,13 @@
 
     <!-- Simple AR text with background flush to marker (back attached to trigger) -->
     <a-entity id="text-group" position="0 0 0">
-      <!-- dark backing plane flush to marker surface -->
-      <a-plane id="text-bg" position="0 0.5 0" rotation="0 0 0" width="1.8" height="0.6" color="#000" opacity="0.65"></a-plane>
+      <!-- thin backing box: center z=0.01 so back face sits flush with marker (z=0) -->
+      <a-box id="text-back-box" position="0 0.5 0.01" width="1.8" height="0.6" depth="0.02" color="#000" opacity="0.9" material="side:double"></a-box>
 
-      <!-- larger text placed slightly in front of the backing plane so its back is effectively attached -->
+      <!-- text placed slightly in front of box so the back of the assembly is attached to the marker -->
       <a-entity
         id="ar-text"
-        position="0 0.5 0.02"
+        position="0 0.5 0.03"
         text="value: Hello AR; align: center; color: #FFFFFF; width: 3; wrapCount: 20"
         look-at="#camera"
         scale="1.2 1.2 1.2">
