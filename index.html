@@ -1,207 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>WebAR Messages</title>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>AR Platform - AR.js + A-Frame</title>
+		<link rel="stylesheet" href="style.css" />
 
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+		<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+		<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-<style>
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-}
+		<script>
+			AFRAME.registerComponent("spin-on-toggle", {
+				schema: {
+					enabled: { type: "boolean", default: true },
+					speed: { type: "number", default: 55 }
+				},
+				tick: function (_time, deltaMs) {
+					if (!this.data.enabled) {
+						return;
+					}
 
-/* MESSAGE CONTAINER */
-#messageBox {
-  position: fixed;
-  top: 18%;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 80%;
+					const rotation = this.el.getAttribute("rotation") || { x: 0, y: 0, z: 0 };
+					const nextY = rotation.y + (this.data.speed * deltaMs) / 1000;
+					this.el.setAttribute("rotation", `${rotation.x} ${nextY} ${rotation.z}`);
+				}
+			});
 
-  padding: 18px 28px;
-  color: white;
-  font-size: 18px;
-  text-align: center;
+			AFRAME.registerComponent("ar-platform", {
+				init: function () {
+					const scene = this.el.sceneEl;
+					const marker = document.getElementById("hiro-marker");
+					const title = document.getElementById("status-text");
+					const modelContainer = document.getElementById("model-container");
+					const cycleButton = document.getElementById("cycle-shape");
+					const spinButton = document.getElementById("toggle-spin");
 
-  /* CORE STYLE (your Pinterest look) */
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
+					const presets = [
+						{
+							id: "box",
+							geometry: "primitive: box; width: 1; height: 1; depth: 1",
+							material: "color: #ff6f59; metalness: 0.2; roughness: 0.55"
+						},
+						{
+							id: "sphere",
+							geometry: "primitive: sphere; radius: 0.6",
+							material: "color: #39a0ed; metalness: 0.2; roughness: 0.45"
+						},
+						{
+							id: "torus-knot",
+							geometry: "primitive: torusKnot; radius: 0.34; radiusTubular: 0.08; p: 2; q: 3",
+							material: "color: #4caf50; metalness: 0.25; roughness: 0.35"
+						}
+					];
 
-  border-radius: 40px;
+					let currentPreset = 0;
+					let spinEnabled = true;
 
-  /* soft glow */
-  box-shadow: 
-    0 0 20px rgba(255,255,255,0.15),
-    inset 0 0 10px rgba(255,255,255,0.1);
+					const renderShape = () => {
+						modelContainer.innerHTML = "";
 
-  border: 2px solid rgba(255,255,255,0.4);
+						const shape = document.createElement("a-entity");
+						shape.setAttribute("id", "active-shape");
+						shape.setAttribute("geometry", presets[currentPreset].geometry);
+						shape.setAttribute("material", presets[currentPreset].material);
+						shape.setAttribute("position", "0 0.5 0");
+						shape.setAttribute("spin-on-toggle", `enabled: ${spinEnabled}; speed: 55`);
 
-  transition: all 0.3s ease;
-}
+						const floorShadow = document.createElement("a-ring");
+						floorShadow.setAttribute("radius-inner", "0.65");
+						floorShadow.setAttribute("radius-outer", "0.95");
+						floorShadow.setAttribute("rotation", "-90 0 0");
+						floorShadow.setAttribute("position", "0 0.01 0");
+						floorShadow.setAttribute("material", "color: #000; opacity: 0.22; side: double");
 
-/* ORGANIC CURVE EFFECT */
-#messageBox::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
+						modelContainer.appendChild(shape);
+						modelContainer.appendChild(floorShadow);
+					};
 
-  border-radius: 50px;
+					const setMarkerStatus = (isVisible) => {
+						if (isVisible) {
+							title.textContent = "Marker detected. Use controls to interact.";
+							title.classList.add("is-live");
+						} else {
+							title.textContent = "Point camera to HIRO marker.";
+							title.classList.remove("is-live");
+						}
+					};
 
-  border: 2px solid rgba(255,255,255,0.2);
+					renderShape();
 
-  filter: blur(4px);
-}
+					marker.addEventListener("markerFound", () => setMarkerStatus(true));
+					marker.addEventListener("markerLost", () => setMarkerStatus(false));
 
-/* ADD BUTTON */
-#addBtn {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+					cycleButton.addEventListener("click", () => {
+						currentPreset = (currentPreset + 1) % presets.length;
+						renderShape();
+					});
 
-  width: 65px;
-  height: 65px;
+					spinButton.addEventListener("click", () => {
+						spinEnabled = !spinEnabled;
+						spinButton.textContent = spinEnabled ? "Pause Rotation" : "Resume Rotation";
 
-  border-radius: 50%;
-  border: none;
+						const currentShape = document.getElementById("active-shape");
+						if (currentShape) {
+							currentShape.setAttribute("spin-on-toggle", `enabled: ${spinEnabled}; speed: 55`);
+						}
+					});
 
-  font-size: 30px;
-  color: white;
+					scene.addEventListener("loaded", () => {
+						setMarkerStatus(false);
+					});
+				}
+			});
+		</script>
+	</head>
+	<body>
+		<div class="hud">
+			<h1>AR Platform</h1>
+			<p id="status-text">Starting camera...</p>
+			<div class="controls">
+				<button id="cycle-shape" type="button">Change Shape</button>
+				<button id="toggle-spin" type="button">Pause Rotation</button>
+			</div>
+		</div>
 
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(10px);
+		<a-scene
+			arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+			renderer="antialias: true; alpha: true"
+			embedded
+			vr-mode-ui="enabled: false"
+			ar-platform
+		>
+			<a-assets></a-assets>
 
-  box-shadow: 0 0 20px rgba(255,255,255,0.3);
+			<a-light type="ambient" intensity="0.7"></a-light>
+			<a-light type="directional" intensity="0.9" position="1 2 1"></a-light>
 
-  z-index: 10;
-}
+			<a-marker id="hiro-marker" preset="hiro">
+				<a-entity id="model-container"></a-entity>
+			</a-marker>
 
-/* FADE ANIMATION */
-.fade {
-  animation: fadeIn 0.4s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-</style>
-</head>
-
-<body>
-
-<div id="messageBox">Scan the trigger</div>
-<button id="addBtn">+</button>
-
-<a-scene embedded arjs>
-
-  <!-- YOUR TRIGGER -->
-  <a-marker type="pattern" url="marker.patt" id="marker">
-
-    <!-- 3D MODEL -->
-    <a-entity 
-      id="model"
-      gltf-model="model.glb"
-      scale="0.5 0.5 0.5"
-      animation-mixer>
-    </a-entity>
-
-  </a-marker>
-
-  <a-entity camera></a-entity>
-</a-scene>
-
-<script>
-
-/* -------------------------
-   MESSAGE SYSTEM
-------------------------- */
-
-let messages = [
-  "This is the first message",
-  "Try tapping left or right",
-  "Add your own message below"
-];
-
-let currentIndex = messages.length - 1;
-let started = false;
-
-const messageBox = document.getElementById("messageBox");
-const marker = document.querySelector("#marker");
-
-/* -------------------------
-   SHOW MESSAGE
-------------------------- */
-
-function showMessage() {
-  messageBox.classList.remove("fade");
-  void messageBox.offsetWidth;
-  messageBox.classList.add("fade");
-
-  messageBox.innerText = messages[currentIndex];
-}
-
-/* -------------------------
-   TRIGGER DETECTION
-------------------------- */
-
-marker.addEventListener("markerFound", () => {
-  if (!started) {
-    started = true;
-
-    setTimeout(() => {
-      showMessage();
-    }, 2000);
-  }
-});
-
-marker.addEventListener("markerLost", () => {
-  messageBox.innerText = "Point camera to trigger";
-  started = false;
-});
-
-/* -------------------------
-   TOUCH NAVIGATION
-------------------------- */
-
-document.addEventListener("click", (e) => {
-
-  if (!started) return;
-
-  const width = window.innerWidth;
-
-  if (e.clientX > width / 2) {
-    // RIGHT SIDE → older
-    if (currentIndex > 0) currentIndex--;
-  } else {
-    // LEFT SIDE → newer
-    if (currentIndex < messages.length - 1) currentIndex++;
-  }
-
-  showMessage();
-});
-
-/* -------------------------
-   ADD MESSAGE
-------------------------- */
-
-document.getElementById("addBtn").onclick = () => {
-
-  let text = prompt("Write your message:");
-
-  if (text && text.trim() !== "") {
-    messages.push(text);
-    currentIndex = messages.length - 1;
-    showMessage();
-  }
-};
-
-</script>
-
-</body>
+			<a-entity camera></a-entity>
+		</a-scene>
+	</body>
 </html>
