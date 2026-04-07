@@ -35,16 +35,17 @@
 
     <!-- Simple AR text with background flush to marker (back attached to trigger) -->
     <a-entity id="text-group" position="0 0 0">
-      <!-- thin backing box: center z=0.01 so back face sits flush with marker (z=0) -->
-      <a-box id="text-back-box" position="0 0.5 0.01" width="1.8" height="0.6" depth="0.02" color="#000" opacity="0.9" material="side:double"></a-box>
+      <!-- cube that extends out from the marker: back face at z=0 (attached), front face at z=depth -->
+      <!-- choose depth 0.6 so cube projects visibly from marker -->
+      <a-box id="text-cube" position="0 0.5 0.3" width="1.8" height="0.9" depth="0.6" color="#222" opacity="0.95" material="side:double"></a-box>
 
-      <!-- text placed slightly in front of box so the back of the assembly is attached to the marker -->
+      <!-- text placed on the cube's front face (farthest from trigger). front face z = 0.6 -> place text slightly in front at z=0.62 -->
       <a-entity
         id="ar-text"
-        position="0 0.5 0.03"
-        text="value: Hello AR; align: center; color: #FFFFFF; width: 3; wrapCount: 20"
-        look-at="#camera"
-        scale="1.2 1.2 1.2">
+        position="0 0.5 0.62"
+        rotation="0 0 0"
+        scale="1.4 1.4 1.4"
+        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 1.6; wrapCount: 20">
       </a-entity>
     </a-entity>
 
