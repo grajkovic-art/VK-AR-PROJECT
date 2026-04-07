@@ -30,15 +30,15 @@
 				const constraints = {};
 
 				if (capabilities.width) {
-					constraints.width = { ideal: 1920 };
+					constraints.width = { ideal: 1080 };
 				}
 
 				if (capabilities.height) {
-					constraints.height = { ideal: 1080 };
+					constraints.height = { ideal: 1920 };
 				}
 
 				if (capabilities.aspectRatio) {
-					constraints.aspectRatio = { ideal: 16 / 9 };
+					constraints.aspectRatio = { ideal: 9 / 16 };
 				}
 
 				if (Object.keys(constraints).length === 0) {
@@ -176,7 +176,7 @@
 		</div>
 
 		<a-scene
-			arjs="trackingMethod: best; sourceType: webcam; facingMode: user; sourceWidth: 1920; sourceHeight: 1080; displayWidth: 1920; displayHeight: 1080; debugUIEnabled: false;"
+			arjs="trackingMethod: best; sourceType: webcam; facingMode: user; sourceWidth: 1080; sourceHeight: 1920; displayWidth: 1080; displayHeight: 1920; debugUIEnabled: false;"
 			renderer="antialias: true; alpha: true"
 			embedded
 			vr-mode-ui="enabled: false"
