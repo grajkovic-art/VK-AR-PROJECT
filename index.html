@@ -30,33 +30,60 @@
   
   <!-- Trigger (marker) -->
   <a-marker preset="hiro" id="marker">
+    <!-- Visible trigger surface (tap this) -->
+    <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- 3D model removed as requested -->
-
-    <!-- Simple AR text with background flush to marker (back attached to trigger) -->
-    <!-- pivot placed at the cube back-face center (marker plane) so rotation keeps back face flush -->
-    <!-- pivot position: x=0, y=side/2, z=0  (side = 0.9 => y=0.45) -->
-    <!-- rotated to 270deg around Y so text appears on the opposite face -->
-    <a-entity id="text-group" position="0 0.45 0" rotation="0 270 0">
-      <!-- cube centered at local z = side/2 so its back face is at local z=0 -->
-      <a-box id="text-cube" position="0 0 0.45" width="0.9" height="0.9" depth="0.9" color="#222" opacity="0.95" material="side:double"></a-box>
-
-      <!-- text placed on cube's front face in local coordinates (front face z ≈ 0.9) -->
-      <a-entity
-        id="ar-text"
-        position="0 0 0.92"
-        rotation="0 0 0"
-        scale="1.6 1.6 1.6"
-        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 1.2; wrapCount: 20"
-        look-at="#camera">
-      </a-entity>
-    </a-entity>
+    <!-- Cube that will come out of the trigger -->
+    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6"></a-box>
 
   </a-marker>
 
-  <a-entity camera id="camera"></a-entity>
+  <a-entity camera>
+    <a-entity cursor="rayOrigin: mouse" raycaster="objects: .clickable"></a-entity>
+  </a-entity>
 
 </a-scene>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const marker = document.querySelector('#marker');
+  if (!marker) return;
+
+  const trigger = marker.querySelector('#trigger');
+  const cube = marker.querySelector('#cube');
+  if (!trigger || !cube) return;
+
+  let visible = false;
+
+  function showCube() {
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
+    cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0.5 0; dur: 600; easing: easeOutElastic');
+    visible = true;
+  }
+
+  function hideCube() {
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
+    cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    visible = false;
+  }
+
+  // Toggle on tap/click
+  trigger.addEventListener('click', function (evt) {
+    evt.stopPropagation();
+    if (visible) hideCube(); else showCube();
+  });
+
+  // Also allow tapping marker area to spawn when marker is visible
+  marker.addEventListener('markerFound', () => {
+    // reset cube hidden when marker appears
+    hideCube();
+  });
+});
+</script>
 
 </body>
 </html>
