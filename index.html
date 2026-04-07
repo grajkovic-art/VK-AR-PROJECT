@@ -41,13 +41,13 @@
       <!-- cube centered at local z = side/2 so its back face is at local z=0 -->
       <a-box id="text-cube" position="0 0 0.45" width="0.9" height="0.9" depth="0.9" color="#222" opacity="0.95" material="side:double"></a-box>
 
-      <!-- text placed on cube's front face in local coordinates (z = side) slightly offset forward -->
+      <!-- text placed on cube's front face in local coordinates (front face z ≈ 0.9) -->
       <a-entity
         id="ar-text"
-        position="0 0 0.47"
+        position="0 0 0.92"
         rotation="0 0 0"
         scale="1.6 1.6 1.6"
-        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 0.8; wrapCount: 20"
+        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 1.2; wrapCount: 20"
         look-at="#camera">
       </a-entity>
     </a-entity>
