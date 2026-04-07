@@ -1,288 +1,51 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<title>AR Platform - AR.js + A-Frame</title>
-		<link rel="stylesheet" href="style.css" />
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-		<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-		<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #ui {
+      position: fixed;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      z-index: 10;
+    }
+    #addBtn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 30px;
+    }
+  </style>
+</head>
 
-		<script>
-			function getVideoElement() {
-				return document.querySelector("video#arjs-video, video.arjs-video, video");
-			}
+<body>
 
-			function applyCameraTuning() {
-				const videoEl = getVideoElement();
-				if (!videoEl || !videoEl.srcObject) {
-					return false;
-				}
+<div id="ui">
+  <button id="addBtn">+</button>
+</div>
 
-				const tracks = videoEl.srcObject.getVideoTracks();
-				if (!tracks || tracks.length === 0) {
-					return false;
-				}
+<a-scene embedded arjs>
+  
+  <!-- Trigger (marker) -->
+  <a-marker preset="hiro" id="marker">
 
-				const track = tracks[0];
-				const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-				const constraints = {};
+    <!-- Your 3D object -->
+    <a-entity 
+      id="model"
+      gltf-model="model.glb"
+      scale="0.5 0.5 0.5"
+      animation-mixer>
+    </a-entity>
 
-				if (capabilities.width) {
-					constraints.width = { ideal: 1080 };
-				}
+  </a-marker>
 
-				if (capabilities.height) {
-					constraints.height = { ideal: 1920 };
-				}
+  <a-entity camera></a-entity>
 
-				if (capabilities.aspectRatio) {
-					constraints.aspectRatio = { ideal: 9 / 16 };
-				}
+</a-scene>
 
-				if (Object.keys(constraints).length === 0) {
-					return true;
-				}
-
-				track.applyConstraints(constraints).catch(() => {
-					// Ignore unsupported constraints; this is a best-effort camera tune.
-				});
-
-				return true;
-			}
-
-			AFRAME.registerComponent("spin-on-toggle", {
-				schema: {
-					enabled: { type: "boolean", default: true },
-					speed: { type: "number", default: 55 }
-				},
-				tick: function (_time, deltaMs) {
-					if (!this.data.enabled) {
-						return;
-					}
-
-					const rotation = this.el.getAttribute("rotation") || { x: 0, y: 0, z: 0 };
-					const nextY = rotation.y + (this.data.speed * deltaMs) / 1000;
-					this.el.setAttribute("rotation", `${rotation.x} ${nextY} ${rotation.z}`);
-				}
-			});
-
-			AFRAME.registerComponent("ar-platform", {
-				init: function () {
-					const scene = this.el.sceneEl;
-					const marker = document.getElementById("hiro-marker");
-					const title = document.getElementById("status-text");
-					const modelContainer = document.getElementById("model-container");
-					const cycleButton = document.getElementById("cycle-shape");
-					const spinButton = document.getElementById("toggle-spin");
-					const rawCamButton = document.getElementById("show-raw-camera");
-					const diagBox = document.getElementById("diag-box");
-
-					const presets = [
-						{
-							id: "box",
-							geometry: "primitive: box; width: 1; height: 1; depth: 1",
-							material: "color: #ff6f59; metalness: 0.2; roughness: 0.55"
-						},
-						{
-							id: "sphere",
-							geometry: "primitive: sphere; radius: 0.6",
-							material: "color: #39a0ed; metalness: 0.2; roughness: 0.45"
-						},
-						{
-							id: "torus-knot",
-							geometry: "primitive: torusKnot; radius: 0.34; radiusTubular: 0.08; p: 2; q: 3",
-							material: "color: #4caf50; metalness: 0.25; roughness: 0.35"
-						}
-					];
-
-					let currentPreset = 0;
-					let spinEnabled = true;
-
-					const renderShape = () => {
-						modelContainer.innerHTML = "";
-
-						const shape = document.createElement("a-entity");
-						shape.setAttribute("id", "active-shape");
-						shape.setAttribute("geometry", presets[currentPreset].geometry);
-						shape.setAttribute("material", presets[currentPreset].material);
-						shape.setAttribute("position", "0 0.5 0");
-						shape.setAttribute("spin-on-toggle", `enabled: ${spinEnabled}; speed: 55`);
-
-						const floorShadow = document.createElement("a-ring");
-						floorShadow.setAttribute("radius-inner", "0.65");
-						floorShadow.setAttribute("radius-outer", "0.95");
-						floorShadow.setAttribute("rotation", "-90 0 0");
-						floorShadow.setAttribute("position", "0 0.01 0");
-						floorShadow.setAttribute("material", "color: #000; opacity: 0.22; side: double");
-
-						modelContainer.appendChild(shape);
-						modelContainer.appendChild(floorShadow);
-					};
-
-					const setMarkerStatus = (isVisible) => {
-						if (isVisible) {
-							title.textContent = "Marker detected. Use controls to interact.";
-							title.classList.add("is-live");
-						} else {
-							title.textContent = "Point camera to HIRO marker.";
-							title.classList.remove("is-live");
-						}
-					};
-
-					renderShape();
-
-					marker.addEventListener("markerFound", () => setMarkerStatus(true));
-					marker.addEventListener("markerLost", () => setMarkerStatus(false));
-
-					cycleButton.addEventListener("click", () => {
-						currentPreset = (currentPreset + 1) % presets.length;
-						renderShape();
-					});
-
-					spinButton.addEventListener("click", () => {
-						spinEnabled = !spinEnabled;
-						spinButton.textContent = spinEnabled ? "Pause Rotation" : "Resume Rotation";
-
-						const currentShape = document.getElementById("active-shape");
-						if (currentShape) {
-							currentShape.setAttribute("spin-on-toggle", `enabled: ${spinEnabled}; speed: 55`);
-						}
-					});
-
-					rawCamButton.addEventListener("click", async () => {
-						rawCamButton.disabled = true;
-						await showRawCameraForDebug();
-						rawCamButton.disabled = false;
-					});
-
-					scene.addEventListener("loaded", () => {
-						setMarkerStatus(false);
-
-						let attempts = 0;
-						const tuner = setInterval(() => {
-							attempts += 1;
-							const ready = applyCameraTuning();
-							if (ready || attempts > 12) {
-								clearInterval(tuner);
-							}
-						}, 350);
-					// once loaded, collect and display video info for debugging
-					setTimeout(() => {
-						collectAndShowVideoInfo(diagBox);
-					}, 1200);
-					});
-				}
-			});
-
-			async function collectAndShowVideoInfo(diagEl) {
-				const v = getVideoElement();
-				if (!v) return;
-				const info = {};
-				info.videoWidth = v.videoWidth || v.getAttribute('width') || 'unknown';
-				info.videoHeight = v.videoHeight || v.getAttribute('height') || 'unknown';
-				info.srcObject = !!v.srcObject;
-				try {
-					const tracks = v.srcObject ? v.srcObject.getVideoTracks() : [];
-					if (tracks.length) {
-						const settings = tracks[0].getSettings ? tracks[0].getSettings() : {};
-						const caps = tracks[0].getCapabilities ? tracks[0].getCapabilities() : {};
-						info.deviceId = settings.deviceId || settings.deviceId === undefined ? settings.deviceId : 'unknown';
-						info.settings = settings;
-						info.capabilities = caps;
-					}
-				} catch (e) {
-					info.error = String(e);
-				}
-				diagEl.textContent = JSON.stringify(info, null, 2);
-				console.log('AR camera info:', info);
-			}
-
-			async function showRawCameraForDebug() {
-				// Create a temporary full-screen raw video overlay to show native camera output
-				let overlay = document.getElementById('raw-cam-overlay');
-				if (overlay) {
-					overlay.remove();
-					return;
-				}
-				overlay = document.createElement('div');
-				overlay.id = 'raw-cam-overlay';
-				overlay.style.position = 'fixed';
-				overlay.style.inset = '0';
-				overlay.style.zIndex = '9999';
-				overlay.style.background = '#000';
-				overlay.style.display = 'flex';
-				overlay.style.alignItems = 'center';
-				overlay.style.justifyContent = 'center';
-
-				const vid = document.createElement('video');
-				vid.autoplay = true;
-				vid.playsInline = true;
-				vid.muted = true;
-				vid.style.width = '100%';
-				vid.style.height = '100%';
-				vid.style.objectFit = 'contain';
-
-				const closeBtn = document.createElement('button');
-				closeBtn.textContent = 'Close Raw View';
-				closeBtn.style.position = 'absolute';
-				closeBtn.style.top = '12px';
-				closeBtn.style.right = '12px';
-				closeBtn.style.zIndex = '10000';
-
-				overlay.appendChild(vid);
-				overlay.appendChild(closeBtn);
-				document.body.appendChild(overlay);
-
-				closeBtn.addEventListener('click', () => {
-					if (vid.srcObject) {
-						vid.srcObject.getTracks().forEach(t => t.stop());
-					}
-					overlay.remove();
-				});
-
-				try {
-					const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: false });
-					vid.srcObject = stream;
-					await vid.play();
-				} catch (e) {
-					console.warn('raw camera error', e);
-					overlay.remove();
-					throw e;
-				}
-			}
-		</script>
-	</head>
-	<body>
-		<div class="hud">
-			<h1>AR Platform</h1>
-			<p id="status-text">Starting camera...</p>
-			<div class="controls">
-				<button id="cycle-shape" type="button">Change Shape</button>
-				<button id="toggle-spin" type="button">Pause Rotation</button>
-				<button id="show-raw-camera" type="button">Show Raw Camera</button>
-				<div id="diag-box" class="diag-box">Camera diagnostics will appear here after load.</div>
-			</div>
-		</div>
-
-		<a-scene
-			arjs="trackingMethod: best; sourceType: webcam; facingMode: user; sourceWidth: 1080; sourceHeight: 1920; displayWidth: 1080; displayHeight: 1920; debugUIEnabled: false;"
-			renderer="antialias: true; alpha: true"
-			embedded
-			vr-mode-ui="enabled: false"
-			ar-platform
-		>
-			<a-assets></a-assets>
-
-			<a-light type="ambient" intensity="0.7"></a-light>
-			<a-light type="directional" intensity="0.9" position="1 2 1"></a-light>
-
-			<a-marker id="hiro-marker" preset="hiro">
-				<a-entity id="model-container"></a-entity>
-			</a-marker>
-
-			<a-entity camera></a-entity>
-		</a-scene>
-	</body>
+</body>
 </html>
