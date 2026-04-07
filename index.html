@@ -34,18 +34,20 @@
     <!-- 3D model removed as requested -->
 
     <!-- Simple AR text with background flush to marker (back attached to trigger) -->
-    <a-entity id="text-group" position="0 0 0">
-      <!-- cube that extends out from the marker: back face at z=0 (attached), front face at z=side -->
-      <!-- use equal sides for a true cube; side = 0.9 (same as previous height) -->
-      <a-box id="text-cube" position="0 0.45 0.45" width="0.9" height="0.9" depth="0.9" color="#222" opacity="0.95" material="side:double"></a-box>
+    <!-- pivot placed at the cube back-face center (marker plane) so rotation keeps back face flush -->
+    <!-- pivot position: x=0, y=side/2, z=0  (side = 0.9 => y=0.45) -->
+    <a-entity id="text-group" position="0 0.45 0" rotation="0 90 0">
+      <!-- cube centered at local z = side/2 so its back face is at local z=0 -->
+      <a-box id="text-cube" position="0 0 0.45" width="0.9" height="0.9" depth="0.9" color="#222" opacity="0.95" material="side:double"></a-box>
 
-      <!-- text placed on the cube's front face (farthest from trigger). front face z = 0.9 -> place text slightly in front at z=0.92 -->
+      <!-- text placed on cube's front face in local coordinates (z = side) slightly offset forward -->
       <a-entity
         id="ar-text"
-        position="0 0.45 0.92"
+        position="0 0 0.47"
         rotation="0 0 0"
         scale="1.6 1.6 1.6"
-        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 0.8; wrapCount: 20">
+        text="value: Hello AR; align: center; anchor: center; baseline: center; color: #FFFFFF; width: 0.8; wrapCount: 20"
+        look-at="#camera">
       </a-entity>
     </a-entity>
 
