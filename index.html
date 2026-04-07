@@ -76,6 +76,8 @@
 					const modelContainer = document.getElementById("model-container");
 					const cycleButton = document.getElementById("cycle-shape");
 					const spinButton = document.getElementById("toggle-spin");
+					const rawCamButton = document.getElementById("show-raw-camera");
+					const diagBox = document.getElementById("diag-box");
 
 					const presets = [
 						{
@@ -149,6 +151,12 @@
 						}
 					});
 
+					rawCamButton.addEventListener("click", async () => {
+						rawCamButton.disabled = true;
+						await showRawCameraForDebug();
+						rawCamButton.disabled = false;
+					});
+
 					scene.addEventListener("loaded", () => {
 						setMarkerStatus(false);
 
@@ -160,9 +168,90 @@
 								clearInterval(tuner);
 							}
 						}, 350);
+					// once loaded, collect and display video info for debugging
+					setTimeout(() => {
+						collectAndShowVideoInfo(diagBox);
+					}, 1200);
 					});
 				}
 			});
+
+			async function collectAndShowVideoInfo(diagEl) {
+				const v = getVideoElement();
+				if (!v) return;
+				const info = {};
+				info.videoWidth = v.videoWidth || v.getAttribute('width') || 'unknown';
+				info.videoHeight = v.videoHeight || v.getAttribute('height') || 'unknown';
+				info.srcObject = !!v.srcObject;
+				try {
+					const tracks = v.srcObject ? v.srcObject.getVideoTracks() : [];
+					if (tracks.length) {
+						const settings = tracks[0].getSettings ? tracks[0].getSettings() : {};
+						const caps = tracks[0].getCapabilities ? tracks[0].getCapabilities() : {};
+						info.deviceId = settings.deviceId || settings.deviceId === undefined ? settings.deviceId : 'unknown';
+						info.settings = settings;
+						info.capabilities = caps;
+					}
+				} catch (e) {
+					info.error = String(e);
+				}
+				diagEl.textContent = JSON.stringify(info, null, 2);
+				console.log('AR camera info:', info);
+			}
+
+			async function showRawCameraForDebug() {
+				// Create a temporary full-screen raw video overlay to show native camera output
+				let overlay = document.getElementById('raw-cam-overlay');
+				if (overlay) {
+					overlay.remove();
+					return;
+				}
+				overlay = document.createElement('div');
+				overlay.id = 'raw-cam-overlay';
+				overlay.style.position = 'fixed';
+				overlay.style.inset = '0';
+				overlay.style.zIndex = '9999';
+				overlay.style.background = '#000';
+				overlay.style.display = 'flex';
+				overlay.style.alignItems = 'center';
+				overlay.style.justifyContent = 'center';
+
+				const vid = document.createElement('video');
+				vid.autoplay = true;
+				vid.playsInline = true;
+				vid.muted = true;
+				vid.style.width = '100%';
+				vid.style.height = '100%';
+				vid.style.objectFit = 'contain';
+
+				const closeBtn = document.createElement('button');
+				closeBtn.textContent = 'Close Raw View';
+				closeBtn.style.position = 'absolute';
+				closeBtn.style.top = '12px';
+				closeBtn.style.right = '12px';
+				closeBtn.style.zIndex = '10000';
+
+				overlay.appendChild(vid);
+				overlay.appendChild(closeBtn);
+				document.body.appendChild(overlay);
+
+				closeBtn.addEventListener('click', () => {
+					if (vid.srcObject) {
+						vid.srcObject.getTracks().forEach(t => t.stop());
+					}
+					overlay.remove();
+				});
+
+				try {
+					const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: false });
+					vid.srcObject = stream;
+					await vid.play();
+				} catch (e) {
+					console.warn('raw camera error', e);
+					overlay.remove();
+					throw e;
+				}
+			}
 		</script>
 	</head>
 	<body>
@@ -172,6 +261,8 @@
 			<div class="controls">
 				<button id="cycle-shape" type="button">Change Shape</button>
 				<button id="toggle-spin" type="button">Pause Rotation</button>
+				<button id="show-raw-camera" type="button">Show Raw Camera</button>
+				<div id="diag-box" class="diag-box">Camera diagnostics will appear here after load.</div>
 			</div>
 		</div>
 
