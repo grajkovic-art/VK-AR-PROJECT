@@ -33,10 +33,13 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Wavy object that will come out of the trigger -->
-    <a-entity id="wavy" position="0 0 0" scale="0 0 0" geometry="primitive: sphere; radius: 0.36; segmentsWidth: 48; segmentsHeight: 48" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6" wavy>
+    <!-- Wavy elongated object that will come out of the trigger -->
+    <a-entity id="cube" position="0 0 0" scale="0 0 0"
+              geometry="primitive: box; width: 2.6; height: 0.35; depth: 0.6; segmentsWidth: 64; segmentsHeight: 1; segmentsDepth: 1"
+              material="color: #4CC3D9; metalness: 0.2; roughness: 0.6"
+              wavy="amplitude: 0.18; wavelength: 0.6; speed: 0.8; direction: z">
       <!-- Text on upper face (always faces camera) -->
-      <a-entity id="cube-text" face-camera position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+      <a-entity id="cube-text" face-camera position="0 0.45 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
     </a-entity>
 
     <!-- Back plane (will be moved opposite camera direction) -->
@@ -63,80 +66,57 @@ AFRAME.registerComponent('face-camera', {
   }
 });
 
-// Wavy vertex displacement component
+// Wavy vertex-displacement component
 AFRAME.registerComponent('wavy', {
   schema: {
-    amplitude: { type: 'number', default: 0.08 },
-    frequency: { type: 'number', default: 1.8 },
-    speed: { type: 'number', default: 1.2 }
+    amplitude: { type: 'number', default: 0.15 },
+    wavelength: { type: 'number', default: 0.6 },
+    speed: { type: 'number', default: 0.6 },
+    direction: { type: 'string', default: 'z' }
   },
   init: function () {
-    const el = this.el;
-    el.addEventListener('model-loaded', () => {});
-
-    // When using a geometry attribute on an entity, the mesh is created immediately.
-    const mesh = el.getObject3D('mesh') || el.getObject3D('mesh');
-    // If mesh not created yet, try to create from geometry:
-    if (!mesh) {
-      // try to build a mesh from geometry + material
-      // A-Frame will create it automatically; we'll wait in tick until present
-      this.originalPositions = null;
-      return;
+    this._mesh = null;
+    this._posAttr = null;
+    this._orig = null;
+    this._time = 0;
+  },
+  tick: function (t, dt) {
+    if (!this._mesh) {
+      this._mesh = this.el.getObject3D('mesh');
+      if (!this._mesh) return;
+      this._geometry = this._mesh.geometry;
+      if (!this._geometry || !this._geometry.attributes || !this._geometry.attributes.position) return;
+      this._posAttr = this._geometry.attributes.position;
+      this._count = this._posAttr.count || (this._posAttr.array.length / 3);
+      this._orig = new Float32Array(this._posAttr.array);
     }
 
-    this.captureGeometry(mesh);
-  },
-  captureGeometry: function (mesh) {
-    const geometry = mesh.geometry || (mesh.children && mesh.children[0] && mesh.children[0].geometry);
-    if (!geometry) return;
-
-    // Ensure BufferGeometry
-    const buffer = geometry.isBufferGeometry ? geometry : new AFRAME.THREE.BufferGeometry().fromGeometry(geometry);
-    const posAttr = buffer.attributes.position;
-    if (!posAttr) return;
-
-    // store original positions
-    const original = new Float32Array(posAttr.array.length);
-    original.set(posAttr.array);
-    this.originalPositions = original;
-    this.buffer = buffer;
-    this.posAttr = posAttr;
-  },
-  tick: function (time, delta) {
-    // ensure mesh available and geometry captured
-    if (!this.posAttr) {
-      const mesh = this.el.getObject3D('mesh');
-      if (mesh) this.captureGeometry(mesh);
-      return;
-    }
-
-    const positions = this.posAttr.array;
-    const original = this.originalPositions;
+    this._time += (dt || 16) / 1000;
     const amp = this.data.amplitude;
-    const freq = this.data.frequency;
-    const speed = this.data.speed;
-    const t = time / 1000 * speed;
+    const wl = this.data.wavelength;
+    const sp = this.data.speed;
+    const dir = this.data.direction;
 
-    for (let i = 0; i < positions.length; i += 3) {
-      const ox = original[i];
-      const oy = original[i + 1];
-      const oz = original[i + 2];
-
-      const r = Math.sqrt(ox * ox + oy * oy + oz * oz);
-      const n = Math.sin(freq * r + t) * amp;
-
-      // displace along vertex normal approximation (using original position normalized)
-      const nx = ox / (r || 1);
-      const ny = oy / (r || 1);
-      const nz = oz / (r || 1);
-
-      positions[i] = ox + nx * n;
-      positions[i + 1] = oy + ny * n;
-      positions[i + 2] = oz + nz * n;
+    const arr = this._posAttr.array;
+    for (let i = 0; i < this._count; i++) {
+      const ix = i * 3;
+      const x = this._orig[ix];
+      const y = this._orig[ix + 1];
+      const z = this._orig[ix + 2];
+      const phase = (x / wl + this._time * sp) * Math.PI * 2;
+      const offset = amp * Math.sin(phase);
+      if (dir === 'y') {
+        arr[ix + 1] = y + offset;
+        arr[ix + 2] = z;
+      } else {
+        // default: displace along Z
+        arr[ix + 2] = z + offset;
+        arr[ix + 1] = y;
+      }
     }
 
-    this.posAttr.needsUpdate = true;
-    if (this.buffer) this.buffer.computeVertexNormals();
+    this._posAttr.needsUpdate = true;
+    if (this._geometry.computeVertexNormals) this._geometry.computeVertexNormals();
   }
 });
 
@@ -145,14 +125,14 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const wavy = marker.querySelector('#wavy');
-  if (!trigger || !wavy) return;
+  const cube = marker.querySelector('#cube');
+  if (!trigger || !cube) return;
 
   let visible = false;
 
   function showCube() {
-    wavy.removeAttribute('animation__scale');
-    wavy.removeAttribute('animation__pos');
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
     // compute camera-facing direction and move cube far away along that direction
     try {
       const markerObj = marker.object3D;
@@ -177,8 +157,8 @@ document.addEventListener('DOMContentLoaded', function () {
       markerObj.worldToLocal(localTarget);
 
       // animate scale and position to the computed local target
-      wavy.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
-      wavy.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
+      cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
+      cube.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
 
       // position the back-plane on the opposite side of the marker (short distance)
       const backPlane = marker.querySelector('#back-plane');
@@ -197,10 +177,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function hideCube() {
-    wavy.removeAttribute('animation__scale');
-    wavy.removeAttribute('animation__pos');
-    wavy.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    wavy.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
+    cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     // also reset back-plane
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
