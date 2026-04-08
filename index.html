@@ -34,11 +34,10 @@
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
     <!-- Cube that will come out of the trigger -->
-    <!-- initial position is slightly above the trigger so it doesn't look attached -->
-    <a-box id="cube" position="0 0.3 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6"></a-box>
-
-    <!-- Label kept separate so it doesn't scale with the cube -->
-    <a-entity id="cube-text" position="0 0.5 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
+      <!-- Text on upper face (attached to cube) -->
+      <a-entity id="cube-text" position="0 0.35 0" rotation="-90 0 0" text="value: Hello; align: center; width: 1.6; color: #111; baseline: center"></a-entity>
+    </a-box>
 
   </a-marker>
 
@@ -55,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const trigger = marker.querySelector('#trigger');
   const cube = marker.querySelector('#cube');
-  const cubeText = marker.querySelector('#cube-text');
   if (!trigger || !cube) return;
 
   let visible = false;
@@ -63,27 +61,25 @@ document.addEventListener('DOMContentLoaded', function () {
   function showCube() {
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
-    // animate from a lower offset up to the final raised position to create visible gap
-    cube.setAttribute('position', '0 0.3 0');
+    cube.removeAttribute('animation__bob');
+
+    // place cube slightly above trigger so it appears floating
+    cube.setAttribute('position', '0 0.6 0');
     cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
-    cube.setAttribute('animation__pos', 'property: position; from: 0 0.3 0; to: 0 0.7 0; dur: 600; easing: easeOutElastic');
-    if (cubeText) {
-      cubeText.removeAttribute('animation__pos');
-      cubeText.setAttribute('animation__pos', 'property: position; from: 0 0.5 0; to: 0 0.95 0; dur: 600; easing: easeOutElastic');
-    }
+
+    // add a subtle bobbing loop so it floats
+    cube.setAttribute('animation__bob', 'property: position; to: 0 0.85 0; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine');
+
     visible = true;
   }
 
   function hideCube() {
+    // stop bobbing before hiding so position animation is predictable
+    cube.removeAttribute('animation__bob');
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
-    // retract back down but maintain a small offset so cube isn't flush with trigger
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    cube.setAttribute('animation__pos', 'property: position; to: 0 0.3 0; dur: 350; easing: easeOutQuad');
-    if (cubeText) {
-      cubeText.removeAttribute('animation__pos');
-      cubeText.setAttribute('animation__pos', 'property: position; to: 0 0.5 0; dur: 350; easing: easeOutQuad');
-    }
     visible = false;
   }
 
