@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
       markerObj.worldToLocal(localTarget);
 
       // animate scale and position to the computed local target
-      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.6 0.6; dur: 700; easing: easeOutElastic');
+      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 700; easing: easeOutElastic');
       cube.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } catch (e) {
       // fallback: small float above trigger
-      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.6 0.6; dur: 600; easing: easeOutElastic');
+      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 600; easing: easeOutElastic');
       cube.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
     }
     visible = true;
