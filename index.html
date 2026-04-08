@@ -126,7 +126,7 @@
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
     <!-- Cube that will come out of the trigger -->
-    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
+    <a-box id="cube" curve-mover position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
       <!-- Text on upper face (always faces camera) -->
       <a-entity id="cube-text" face-camera position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
     </a-box>
@@ -208,6 +208,12 @@ document.addEventListener('DOMContentLoaded', function () {
       cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
       cube.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
     }
+    
+    // start curve mover after the show animation completes
+    setTimeout(() => {
+      try { const cm = cube.components && cube.components['curve-mover']; if (cm) cm.playPath(); } catch (e) {}
+    }, 800);
+
     visible = true;
   }
 
@@ -216,7 +222,8 @@ document.addEventListener('DOMContentLoaded', function () {
     cube.removeAttribute('animation__pos');
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
     cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    // also reset back-plane
+    // stop curve mover and reset back-plane
+    try { const cm = cube.components && cube.components['curve-mover']; if (cm) cm.stopPath(); } catch (e) {}
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
     visible = false;
