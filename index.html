@@ -35,8 +35,8 @@
 
     <!-- Cube that will come out of the trigger -->
     <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
-      <!-- Text on upper face (attached to cube) -->
-      <a-entity id="cube-text" position="0 0.35 0" rotation="-90 0 0" text="value: Hello; align: center; width: 1.6; color: #111; baseline: center"></a-entity>
+      <!-- Text on upper face -->
+      <a-entity id="cube-text" position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
     </a-box>
 
   </a-marker>
@@ -48,6 +48,18 @@
 </a-scene>
 
 <script>
+// Component: keep entity facing camera
+AFRAME.registerComponent('face-camera', {
+  tick: function () {
+    const cam = document.querySelector('[camera]');
+    if (!cam) return;
+    const cameraObj = cam.object3D;
+    const v = new AFRAME.THREE.Vector3();
+    cameraObj.getWorldPosition(v);
+    this.el.object3D.lookAt(v);
+  }
+});
+
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
@@ -61,25 +73,17 @@ document.addEventListener('DOMContentLoaded', function () {
   function showCube() {
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
-    cube.removeAttribute('animation__bob');
-
-    // place cube slightly above trigger so it appears floating
-    cube.setAttribute('position', '0 0.6 0');
+    // float above trigger with a small gap (cube base ~0.15 above trigger)
     cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
-
-    // add a subtle bobbing loop so it floats
-    cube.setAttribute('animation__bob', 'property: position; to: 0 0.85 0; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine');
-
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
     visible = true;
   }
 
   function hideCube() {
-    // stop bobbing before hiding so position animation is predictable
-    cube.removeAttribute('animation__bob');
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
-    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     visible = false;
   }
 
