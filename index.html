@@ -34,9 +34,10 @@
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
     <!-- Cube that will come out of the trigger -->
-    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
-      <!-- Text on upper face -->
-      <a-entity id="cube-text" position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+    <!-- initial position is slightly above the trigger so it doesn't look attached -->
+    <a-box id="cube" position="0 0.3 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
+      <!-- Text on upper face (position relative to cube center) -->
+      <a-entity id="cube-text" position="0 0.35 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
     </a-box>
 
   </a-marker>
@@ -61,16 +62,19 @@ document.addEventListener('DOMContentLoaded', function () {
   function showCube() {
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
+    // animate from a lower offset up to the final raised position to create visible gap
+    cube.setAttribute('position', '0 0.3 0');
     cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
-    cube.setAttribute('animation__pos', 'property: position; to: 0 0.5 0; dur: 600; easing: easeOutElastic');
+    cube.setAttribute('animation__pos', 'property: position; from: 0 0.3 0; to: 0 0.7 0; dur: 600; easing: easeOutElastic');
     visible = true;
   }
 
   function hideCube() {
     cube.removeAttribute('animation__scale');
     cube.removeAttribute('animation__pos');
+    // retract back down but maintain a small offset so cube isn't flush with trigger
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0.3 0; dur: 350; easing: easeOutQuad');
     visible = false;
   }
 
