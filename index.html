@@ -9,6 +9,98 @@
     #ui {
       position: fixed;
       bottom: 20px;
+  
+    <!-- Component: move entity along a computed curved path toward camera direction and spawn trail -->
+    <script>
+    AFRAME.registerComponent('curve-mover', {
+      schema: {
+        duration: { type: 'number', default: 2000 },
+        distance: { type: 'number', default: 2.2 },
+        trailInterval: { type: 'number', default: 80 },
+        trailLife: { type: 'number', default: 900 },
+        loop: { type: 'boolean', default: true }
+      },
+      init: function () {
+        this.startTime = null;
+        this.playing = false;
+        this.trailTimer = null;
+        this.elapsed = 0;
+        this.marker = document.querySelector('#marker');
+      },
+      playPath: function () {
+        this.startTime = performance.now();
+        this.elapsed = 0;
+        this.playing = true;
+        const self = this;
+        // start trail spawner
+        if (this.data.trailInterval > 0) {
+          this.trailTimer = setInterval(() => {
+            self.spawnTrailDot();
+          }, this.data.trailInterval);
+        }
+      },
+      stopPath: function () {
+        this.playing = false;
+        if (this.trailTimer) { clearInterval(this.trailTimer); this.trailTimer = null; }
+      },
+      remove: function () {
+        if (this.trailTimer) clearInterval(this.trailTimer);
+      },
+      spawnTrailDot: function () {
+        try {
+          const markerObj = this.marker.object3D;
+          const worldPos = new AFRAME.THREE.Vector3();
+          this.el.object3D.getWorldPosition(worldPos);
+          // convert world pos to marker-local coords
+          const local = worldPos.clone();
+          markerObj.worldToLocal(local);
+          const dot = document.createElement('a-sphere');
+          dot.setAttribute('position', `${local.x} ${local.y} ${local.z}`);
+          dot.setAttribute('radius', '0.03');
+          dot.setAttribute('material', 'color: #4CC3D9; opacity: 0.85; shader: standard; transparent: true');
+          this.marker.appendChild(dot);
+          dot.setAttribute('animation__fade', `property: material.opacity; to: 0; dur: ${this.data.trailLife}; easing: linear`);
+          dot.setAttribute('animation__scale', `property: scale; to: 0.01 0.01 0.01; dur: ${this.data.trailLife}; easing: linear`);
+          setTimeout(() => { if (dot.parentNode) dot.parentNode.removeChild(dot); }, this.data.trailLife + 50);
+        } catch (e) { /* ignore */ }
+      },
+      tick: function (time, dt) {
+        if (!this.playing) return;
+        if (!this.startTime) this.startTime = time;
+        const duration = Math.max(1, this.data.duration);
+        this.elapsed = time - this.startTime;
+        let t = (this.elapsed % duration) / duration;
+        if (!this.data.loop && this.elapsed > duration) { t = 1; this.stopPath(); }
+
+        // compute control points in world space based on marker and camera
+        const markerObj = this.marker.object3D;
+        const mw = new AFRAME.THREE.Vector3();
+        const cw = new AFRAME.THREE.Vector3();
+        markerObj.getWorldPosition(mw);
+        const cam = document.querySelector('[camera]').object3D;
+        cam.getWorldPosition(cw);
+        const dir = cw.clone().sub(mw).normalize();
+        const up = new AFRAME.THREE.Vector3(0,1,0);
+        const right = new AFRAME.THREE.Vector3().crossVectors(up, dir).normalize();
+
+        const p0 = mw.clone().add(dir.clone().multiplyScalar(0.3)).add(up.clone().multiplyScalar(0.15));
+        const p2 = mw.clone().add(dir.clone().multiplyScalar(this.data.distance)).add(up.clone().multiplyScalar(0.28));
+        const p1 = mw.clone().add(dir.clone().multiplyScalar(this.data.distance * 0.45)).add(up.clone().multiplyScalar(0.8)).add(right.clone().multiplyScalar(0.4));
+
+        // quadratic Bezier
+        const invT = 1 - t;
+        const posW = new AFRAME.THREE.Vector3();
+        posW.x = invT*invT*p0.x + 2*invT*t*p1.x + t*t*p2.x;
+        posW.y = invT*invT*p0.y + 2*invT*t*p1.y + t*t*p2.y;
+        posW.z = invT*invT*p0.z + 2*invT*t*p1.z + t*t*p2.z;
+
+        // convert world pos to marker local coords
+        const local = posW.clone();
+        markerObj.worldToLocal(local);
+        this.el.setAttribute('position', `${local.x} ${local.y} ${local.z}`);
+      }
+    });
+    </script>
       width: 100%;
       text-align: center;
       z-index: 10;
@@ -33,17 +125,14 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Spline controller creates a closed curve in marker-local space -->
-    <a-entity id="splineHost" spline-controller></a-entity>
+    <!-- Cube that will come out of the trigger -->
+    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
+      <!-- Text on upper face (always faces camera) -->
+      <a-entity id="cube-text" face-camera position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+    </a-box>
 
-    <!-- Main animated text and trailing copies (offsets produce motion trail) -->
-    <a-entity id="texts">
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0;" text="value: Hello AR; align: center; width: 2.2; color: #fff; baseline: center"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.06;" text="value: Hello AR; align: center; width: 2.2; color: #ddd; baseline: center" material="opacity:0.9"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.12;" text="value: Hello AR; align: center; width: 2.2; color: #bbb; baseline: center" material="opacity:0.7"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.18;" text="value: Hello AR; align: center; width: 2.2; color: #999; baseline: center" material="opacity:0.5"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.24;" text="value: Hello AR; align: center; width: 2.2; color: #777; baseline: center" material="opacity:0.35"></a-entity>
-    </a-entity>
+    <!-- Back plane (will be moved opposite camera direction) -->
+    <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
   </a-marker>
 
@@ -63,72 +152,6 @@ AFRAME.registerComponent('face-camera', {
     const v = new AFRAME.THREE.Vector3();
     cameraObj.getWorldPosition(v);
     this.el.object3D.lookAt(v);
-  }
-});
-
-// spline-controller: defines a closed CatmullRom curve in marker-local space
-AFRAME.registerComponent('spline-controller', {
-  init: function () {
-    const pts = [];
-    // define a smooth curved loop in front of the marker (marker-local coords)
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.2, -0.0));
-    pts.push(new AFRAME.THREE.Vector3(0.35, 0.35, -0.6));
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.55, -1.2));
-    pts.push(new AFRAME.THREE.Vector3(-0.35, 0.35, -0.6));
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.2, -0.0));
-
-    this.curve = new AFRAME.THREE.CatmullRomCurve3(pts);
-    this.curve.closed = true;
-  }
-});
-
-// follow-spline: moves the entity along the spline defined on nearest ancestor with spline-controller
-AFRAME.registerComponent('follow-spline', {
-  schema: {
-    duration: { type: 'int', default: 5000 },
-    offset: { type: 'number', default: 0 },
-    look: { type: 'boolean', default: true }
-  },
-  init: function () {
-    this.start = Date.now();
-    // find ancestor with spline-controller (marker)
-    let el = this.el;
-    this.host = null;
-    while (el && !this.host) {
-      if (el.components && el.components['spline-controller']) this.host = el;
-      el = el.parentEl;
-    }
-    if (!this.host) {
-      // try marker by id
-      this.host = document.querySelector('#splineHost');
-    }
-  },
-  tick: function () {
-    if (!this.host || !this.host.components || !this.host.components['spline-controller']) return;
-    const curve = this.host.components['spline-controller'].curve;
-    if (!curve) return;
-
-    const elapsed = (Date.now() - this.start) % this.data.duration;
-    let u = (elapsed / this.data.duration + this.data.offset) % 1;
-
-    // point and tangent in host (marker-local) space
-    const point = curve.getPointAt(u);
-    const tangent = curve.getTangentAt(u).normalize();
-
-    // set entity local position
-    this.el.object3D.position.copy(point);
-
-    if (this.data.look) {
-      // compute a small look target ahead along tangent in host-local coords
-      const lookLocal = point.clone().add(tangent.clone().multiplyScalar(0.05));
-      // convert to world coords for lookAt
-      const hostObj = this.host.object3D;
-      const worldTarget = hostObj.localToWorld(lookLocal.clone());
-      // object3D.lookAt expects world coordinates
-      this.el.object3D.lookAt(worldTarget);
-      // keep upright by zeroing X rotation (so text not tilted too much)
-      this.el.object3D.rotation.x = 0;
-    }
   }
 });
 
