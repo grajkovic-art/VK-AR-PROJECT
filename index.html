@@ -35,10 +35,10 @@
 
     <!-- Cube that will come out of the trigger -->
     <!-- initial position is slightly above the trigger so it doesn't look attached -->
-    <a-box id="cube" position="0 0.3 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
-      <!-- Text on upper face (position relative to cube center) -->
-      <a-entity id="cube-text" position="0 0.35 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
-    </a-box>
+    <a-box id="cube" position="0 0.3 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6"></a-box>
+
+    <!-- Label kept separate so it doesn't scale with the cube -->
+    <a-entity id="cube-text" position="0 0.5 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
 
   </a-marker>
 
@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const trigger = marker.querySelector('#trigger');
   const cube = marker.querySelector('#cube');
+  const cubeText = marker.querySelector('#cube-text');
   if (!trigger || !cube) return;
 
   let visible = false;
@@ -66,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function () {
     cube.setAttribute('position', '0 0.3 0');
     cube.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
     cube.setAttribute('animation__pos', 'property: position; from: 0 0.3 0; to: 0 0.7 0; dur: 600; easing: easeOutElastic');
+    if (cubeText) {
+      cubeText.removeAttribute('animation__pos');
+      cubeText.setAttribute('animation__pos', 'property: position; from: 0 0.5 0; to: 0 0.95 0; dur: 600; easing: easeOutElastic');
+    }
     visible = true;
   }
 
@@ -75,6 +80,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // retract back down but maintain a small offset so cube isn't flush with trigger
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
     cube.setAttribute('animation__pos', 'property: position; to: 0 0.3 0; dur: 350; easing: easeOutQuad');
+    if (cubeText) {
+      cubeText.removeAttribute('animation__pos');
+      cubeText.setAttribute('animation__pos', 'property: position; to: 0 0.5 0; dur: 350; easing: easeOutQuad');
+    }
     visible = false;
   }
 
