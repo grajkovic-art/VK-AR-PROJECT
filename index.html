@@ -33,8 +33,8 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Flexible segmented object (behaves as a single object) -->
-    <a-entity id="flex" position="0 0 0" scale="1 1 1"></a-entity>
+    <!-- Curved extruded object that will come out of the trigger -->
+    <a-entity id="cube" bend-object="text: Hello; length: 2.2; segments: 80; width: 0.8; height: 0.25; amplitude: 0.9; charsSpacing: 0.18" position="0 0 0"></a-entity>
 
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
@@ -75,53 +75,100 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
+// Component: create an extruded curved object and place bent text along its top
+AFRAME.registerComponent('bend-object', {
+  schema: {
+    text: { type: 'string', default: 'Hello' },
+    length: { type: 'number', default: 2.2 },
+    segments: { type: 'int', default: 40 },
+    width: { type: 'number', default: 0.8 },
+    height: { type: 'number', default: 0.25 },
+    amplitude: { type: 'number', default: 0.6 },
+    charsSpacing: { type: 'number', default: 0.2 }
+  },
+  init: function () {
+    const THREE = AFRAME.THREE;
+    const d = this.data;
+    const el = this.el;
+
+    // Build a smooth curve along local +Z with Y offsets (sine wave)
+    const points = [];
+    const steps = d.segments;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const z = t * d.length;
+      const y = Math.sin(t * Math.PI * 2) * d.amplitude * (0.5 - Math.abs(t - 0.5));
+      points.push(new THREE.Vector3(0, y, z));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points);
+
+    // rectangular cross-section shape
+    const w = d.width / 2;
+    const h = d.height / 2;
+    const shape = new THREE.Shape();
+    shape.moveTo(-w, -h);
+    shape.lineTo(w, -h);
+    shape.lineTo(w, h);
+    shape.lineTo(-w, h);
+    shape.lineTo(-w, -h);
+
+    const extrudeSettings = { steps: steps, bevelEnabled: false, extrudePath: curve };
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geom.computeVertexNormals();
+
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4CC3D9, metalness: 0.2, roughness: 0.6 });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    // Center geometry so its start is near local origin (small offset)
+    // by default extrude starts at z=0, so keep as-is.
+
+    // attach mesh to this entity
+    el.setObject3D('mesh', mesh);
+
+    // Place characters along the top center of the extruded path
+    const text = this.data.text || '';
+    const chars = text.split('');
+    const charCount = chars.length;
+    const startT = 0.12;
+    const endT = 0.88;
+
+    for (let i = 0; i < charCount; i++) {
+      const u = startT + (i / Math.max(1, charCount - 1)) * (endT - startT);
+      const pt = curve.getPointAt(u);
+      // slightly above the top surface
+      const offsetY = d.height * 0.6;
+
+      const charEl = document.createElement('a-entity');
+      charEl.setAttribute('text', `value: ${chars[i]}; align: center; width: 0.4; color: #111; baseline: center`);
+      charEl.setAttribute('position', `${pt.x} ${pt.y + offsetY} ${pt.z}`);
+      charEl.setAttribute('preserve-size', 'base: 1 1 1');
+      charEl.setAttribute('face-camera', '');
+      el.appendChild(charEl);
+    }
+  },
+  remove: function () {
+    if (this.el.getObject3D('mesh')) {
+      this.el.removeObject3D('mesh');
+    }
+  }
+});
+
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const flex = marker.querySelector('#flex');
-  if (!trigger || !flex) return;
-
-  // build segmented flexible object
-  const SEG_COUNT = 12;
-  const TOTAL_X = 1.4; // desired final length along X
-  const SEG_LEN = TOTAL_X / SEG_COUNT;
-  const SEG_THICK_Y = 0.25;
-  const SEG_THICK_Z = 0.25;
-  const segments = [];
-
-  // create segments and a text on the last segment
-  for (let i = 0; i < SEG_COUNT; i++) {
-    const s = document.createElement('a-box');
-    s.setAttribute('id', `seg-${i}`);
-    s.setAttribute('class', 'segment');
-    s.setAttribute('position', '0 0 0');
-    s.setAttribute('scale', '0 0 0');
-    s.setAttribute('material', 'color: #4CC3D9; metalness: 0.2; roughness: 0.6');
-    flex.appendChild(s);
-    segments.push(s);
-  }
-
-  // create text and attach to last segment
-  const textEnt = document.createElement('a-entity');
-  textEnt.setAttribute('id', 'cube-text');
-  textEnt.setAttribute('face-camera', '');
-  textEnt.setAttribute('preserve-size', '');
-  textEnt.setAttribute('position', `0 ${SEG_THICK_Y * 1.8} 0`);
-  textEnt.setAttribute('rotation', '-90 0 0');
-  textEnt.setAttribute('text', 'value: Hello; align: center; width: 2.4; color: #111; baseline: center');
-  segments[segments.length - 1].appendChild(textEnt);
+  const cube = marker.querySelector('#cube');
+  if (!trigger || !cube) return;
 
   let visible = false;
 
   function showCube() {
-    // hide any previous animations on segments
-    segments.forEach(s => {
-      s.removeAttribute('animation__pos');
-      s.removeAttribute('animation__scale');
-      s.removeAttribute('animation__rot');
-    });
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
     // compute camera-facing direction and move cube far away along that direction
     try {
       const markerObj = marker.object3D;
@@ -145,43 +192,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // compute quadratic bezier control point to create bend
-      const p0 = new AFRAME.THREE.Vector3(0, 0, 0);
-      const p2 = localTarget.clone();
-      const mid = p0.clone().add(p2).multiplyScalar(0.5);
-      // create a lateral bend vector using camera-to-marker direction cross with up
-      const camW = cw.clone();
-      const markW = mw.clone();
-      const bendDir = camW.clone().sub(markW).normalize();
-      const lateral = (new AFRAME.THREE.Vector3()).crossVectors(bendDir, new AFRAME.THREE.Vector3(0,1,0)).normalize();
-      const bendMag = 0.8; // tune for amount of bend
-      const controlWorld = mw.clone().add(bendDir.multiplyScalar(targetDistance*0.45)).add(lateral.multiplyScalar(bendMag));
-      const controlLocal = controlWorld.clone();
-      markerObj.worldToLocal(controlLocal);
-
-      const p1 = controlLocal;
-
-      // position each segment along the quadratic bezier and orient them
-      for (let i = 0; i < segments.length; i++) {
-        const t = i / (segments.length - 1);
-        const inv = 1 - t;
-        const pos = new AFRAME.THREE.Vector3().addScaledVector(p0, inv*inv).addScaledVector(p1, 2*inv*t).addScaledVector(p2, t*t);
-
-        // compute tangent for rotation: derivative of quadratic bezier
-        const tangent = p1.clone().sub(p0).multiplyScalar(2*inv).add(p2.clone().sub(p1).multiplyScalar(2*t));
-        tangent.normalize();
-
-        // determine rotation angles: pitch (x) and yaw (y)
-        const yaw = Math.atan2(tangent.x, tangent.z) * 180 / Math.PI;
-        const pitch = Math.atan2(tangent.y, Math.sqrt(tangent.x*tangent.x + tangent.z*tangent.z)) * 180 / Math.PI;
-
-        const seg = segments[i];
-        // animate to computed position and rotation and scale (each seg length along X)
-        const targetScale = `${SEG_LEN} ${SEG_THICK_Y} ${SEG_THICK_Z}`;
-        seg.setAttribute('animation__pos', `property: position; to: ${pos.x} ${pos.y} ${pos.z}; dur: 700; easing: easeOutElastic`);
-        seg.setAttribute('animation__rot', `property: rotation; to: ${pitch} ${yaw} 0; dur: 700; easing: easeOutElastic`);
-        seg.setAttribute('animation__scale', `property: scale; to: ${targetScale}; dur: 700; easing: easeOutElastic`);
-      }
+      // animate scale and position to the computed local target
+      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 700; easing: easeOutElastic');
+      cube.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
 
       // position the back-plane on the opposite side of the marker (short distance)
       const backPlane = marker.querySelector('#back-plane');
@@ -193,25 +206,17 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } catch (e) {
       // fallback: small float above trigger
-      // fallback animate segments to a small float
-      segments.forEach((seg, i) => {
-        const s = i / (segments.length - 1);
-        seg.setAttribute('animation__scale', `property: scale; to: ${SEG_LEN} ${SEG_THICK_Y} ${SEG_THICK_Z}; dur: 600; easing: easeOutElastic`);
-        seg.setAttribute('animation__pos', `property: position; to: 0 ${0.45 + s*0.02} 0; dur: 600; easing: easeOutElastic`);
-      });
+      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 600; easing: easeOutElastic');
+      cube.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
     }
     visible = true;
   }
 
   function hideCube() {
-    // hide/contract all segments
-    segments.forEach((seg, i) => {
-      seg.removeAttribute('animation__pos');
-      seg.removeAttribute('animation__rot');
-      seg.removeAttribute('animation__scale');
-      seg.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-      seg.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    });
+    cube.removeAttribute('animation__scale');
+    cube.removeAttribute('animation__pos');
+    cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     // also reset back-plane
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
