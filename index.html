@@ -33,11 +33,10 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Long wavy path that will come out of the trigger -->
-    <a-entity id="path" wavy-path="length: 4.2; segments: 360; radius: 0.06; amplitude: 0.45; waves: 7; color: #4CC3D9" position="0 0 0" scale="0 0 0">
-      <!-- Text attached to the path (kept at same relative spot as before) -->
-      <a-entity id="cube-text" face-camera position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
-    </a-entity>
+    <!-- Path that will extend out from the trigger -->
+    <a-box id="path" position="0 0 0" scale="0 0 0" width="0.12" height="0.06" depth="0.6" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6"></a-box>
+    <!-- Text attached to the path (billboarded to camera) -->
+    <a-entity id="path-text" face-camera text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
 
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
@@ -63,48 +62,13 @@ AFRAME.registerComponent('face-camera', {
   }
 });
 
-// Component: generate a long wavy tube/path mesh
-AFRAME.registerComponent('wavy-path', {
-  schema: {
-    length: { type: 'number', default: 3.0 },
-    segments: { type: 'int', default: 240 },
-    radius: { type: 'number', default: 0.06 },
-    amplitude: { type: 'number', default: 0.45 },
-    waves: { type: 'int', default: 6 },
-    color: { type: 'color', default: '#4CC3D9' }
-  },
-  init: function () {
-    const THREE = AFRAME.THREE;
-    const data = this.data;
-    const points = [];
-    for (let i = 0; i <= data.segments; i++) {
-      const t = i / data.segments;
-      const z = t * data.length; // extend along local +Z
-      const angle = t * data.waves * Math.PI * 2;
-      const x = Math.sin(angle) * data.amplitude;
-      const y = Math.cos(angle * 0.7) * (data.amplitude * 0.18);
-      points.push(new THREE.Vector3(x, y, z));
-    }
-
-    const curve = new THREE.CatmullRomCurve3(points);
-    const geometry = new THREE.TubeGeometry(curve, data.segments, data.radius, 8, false);
-    const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(data.color), metalness: 0.2, roughness: 0.6 });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    this.el.setObject3D('mesh', mesh);
-  },
-  remove: function () {
-    this.el.removeObject3D('mesh');
-  }
-});
-
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
   const path = marker.querySelector('#path');
+  const pathText = marker.querySelector('#path-text');
   if (!trigger || !path) return;
 
   let visible = false;
@@ -112,7 +76,17 @@ document.addEventListener('DOMContentLoaded', function () {
   function showCube() {
     path.removeAttribute('animation__scale');
     path.removeAttribute('animation__pos');
-    // compute camera-facing direction and move cube far away along that direction
+    // determine path length from text length (characters)
+    const textVal = (pathText && pathText.getAttribute('text') && pathText.getAttribute('text').value) || 'Hello';
+    const chars = Math.max(1, textVal.length);
+    const unitPerChar = 0.18; // meters per character (adjustable)
+    const pathLength = Math.max(0.6, chars * unitPerChar);
+
+    // set box depth to pathLength
+    path.setAttribute('depth', pathLength);
+    path.setAttribute('width', 0.12);
+    path.setAttribute('height', 0.06);
+
     try {
       const markerObj = marker.object3D;
       const camObj = document.querySelector('[camera]').object3D;
@@ -122,24 +96,24 @@ document.addEventListener('DOMContentLoaded', function () {
       camObj.getWorldPosition(cw);
 
       const dir = cw.clone().sub(mw);
-      if (dir.length() === 0) {
-        dir.set(0, 1, 0);
-      }
+      if (dir.length() === 0) dir.set(0, 1, 0);
       dir.normalize();
 
-      // choose a large distance so cube appears far from trigger in the camera direction
-      const targetDistance = 2.2; // meters in A-Frame units
+      const targetDistance = 2.2; // meters
       const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
-
-      // convert world target to marker-local coordinates
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // animate scale and position to the computed local target
-      path.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
+      // animate scale from 0 to 1 to reveal path length
+      path.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 700; easing: easeOutElastic');
       path.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
 
-      // position the back-plane on the opposite side of the marker (short distance)
+      // position text at the front end of the path (local z = +depth/2)
+      const textLocalZ = pathLength / 2 + 0.05;
+      const textY = 0.06 / 2 + 0.02;
+      if (pathText) pathText.setAttribute('position', `0 ${textY} ${textLocalZ}`);
+
+      // move back-plane opposite the camera
       const backPlane = marker.querySelector('#back-plane');
       if (backPlane) {
         const backWorld = mw.clone().add(dir.clone().multiplyScalar(-0.4));
@@ -149,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } catch (e) {
       // fallback: small float above trigger
-      path.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
+      path.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutElastic');
       path.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
     }
     visible = true;
@@ -163,6 +137,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // also reset back-plane
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
+    // reset text position
+    if (pathText) pathText.setAttribute('position', '0 0 0');
     visible = false;
   }
 
