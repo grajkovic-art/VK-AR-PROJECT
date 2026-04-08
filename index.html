@@ -36,17 +36,14 @@
     <!-- Spline controller creates a closed curve in marker-local space -->
     <a-entity id="splineHost" spline-controller></a-entity>
 
-    <!-- Main animated text and trailing copies (different text per copy) -->
+    <!-- Main animated text and trailing copies (offsets produce motion trail) -->
     <a-entity id="texts">
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0;" text="value: Welcome; align: center; width: 2.2; color: #fff; baseline: center"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.06;" text="value: to AR.js; align: center; width: 2.2; color: #ffd; baseline: center" material="opacity:0.95"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.12;" text="value: Follow Path; align: center; width: 2.2; color: #cfc; baseline: center" material="opacity:0.8"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.18;" text="value: Trailing Text; align: center; width: 2.2; color: #9cf; baseline: center" material="opacity:0.6"></a-entity>
-      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.24;" text="value: Enjoy!; align: center; width: 2.2; color: #7aa; baseline: center" material="opacity:0.45"></a-entity>
+      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0;" text="value: Hello AR; align: center; width: 2.2; color: #fff; baseline: center"></a-entity>
+      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.06;" text="value: Hello AR; align: center; width: 2.2; color: #ddd; baseline: center" material="opacity:0.9"></a-entity>
+      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.12;" text="value: Hello AR; align: center; width: 2.2; color: #bbb; baseline: center" material="opacity:0.7"></a-entity>
+      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.18;" text="value: Hello AR; align: center; width: 2.2; color: #999; baseline: center" material="opacity:0.5"></a-entity>
+      <a-entity class="splineText" follow-spline="duration: 6000; offset: 0.24;" text="value: Hello AR; align: center; width: 2.2; color: #777; baseline: center" material="opacity:0.35"></a-entity>
     </a-entity>
-
-    <!-- Per-letter trailing example: each letter follows with incremental offset -->
-    <a-entity id="letterTrail" text-trail="value: AR LETTERS; duration: 5000; spacing: 0.04; textWidth: 0.9; color: #ffd"></a-entity>
 
   </a-marker>
 
@@ -131,30 +128,6 @@ AFRAME.registerComponent('follow-spline', {
       this.el.object3D.lookAt(worldTarget);
       // keep upright by zeroing X rotation (so text not tilted too much)
       this.el.object3D.rotation.x = 0;
-    }
-  }
-});
-
-// text-trail: spawn individual letters that follow the spline with incremental offsets
-AFRAME.registerComponent('text-trail', {
-  schema: {
-    value: { type: 'string', default: 'Hello' },
-    duration: { type: 'int', default: 5000 },
-    spacing: { type: 'number', default: 0.05 },
-    textWidth: { type: 'number', default: 0.8 },
-    color: { type: 'color', default: '#fff' }
-  },
-  init: function () {
-    const str = this.data.value || '';
-    this.letters = [];
-    for (let i = 0; i < str.length; i++) {
-      const ch = str[i];
-      const ent = document.createElement('a-entity');
-      ent.setAttribute('text', `value: ${ch}; align: center; width: ${this.data.textWidth}; color: ${this.data.color}; baseline: center`);
-      const offset = (i * this.data.spacing) % 1;
-      ent.setAttribute('follow-spline', `duration: ${this.data.duration}; offset: ${offset}; look: true`);
-      this.el.appendChild(ent);
-      this.letters.push(ent);
     }
   }
 });
