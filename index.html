@@ -33,8 +33,8 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Segmented chain (replaces single cube) -->
-    <a-entity id="chain" position="0 0 0"></a-entity>
+    <!-- Flexible segmented object (behaves as a single object) -->
+    <a-entity id="flex" position="0 0 0" scale="1 1 1"></a-entity>
 
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
@@ -80,53 +80,49 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const chain = marker.querySelector('#chain');
-  if (!trigger || !chain) return;
+  const flex = marker.querySelector('#flex');
+  if (!trigger || !flex) return;
+
+  // build segmented flexible object
+  const SEG_COUNT = 12;
+  const TOTAL_X = 1.4; // desired final length along X
+  const SEG_LEN = TOTAL_X / SEG_COUNT;
+  const SEG_THICK_Y = 0.25;
+  const SEG_THICK_Z = 0.25;
+  const segments = [];
+
+  // create segments and a text on the last segment
+  for (let i = 0; i < SEG_COUNT; i++) {
+    const s = document.createElement('a-box');
+    s.setAttribute('id', `seg-${i}`);
+    s.setAttribute('class', 'segment');
+    s.setAttribute('position', '0 0 0');
+    s.setAttribute('scale', '0 0 0');
+    s.setAttribute('material', 'color: #4CC3D9; metalness: 0.2; roughness: 0.6');
+    flex.appendChild(s);
+    segments.push(s);
+  }
+
+  // create text and attach to last segment
+  const textEnt = document.createElement('a-entity');
+  textEnt.setAttribute('id', 'cube-text');
+  textEnt.setAttribute('face-camera', '');
+  textEnt.setAttribute('preserve-size', '');
+  textEnt.setAttribute('position', `0 ${SEG_THICK_Y * 1.8} 0`);
+  textEnt.setAttribute('rotation', '-90 0 0');
+  textEnt.setAttribute('text', 'value: Hello; align: center; width: 2.4; color: #111; baseline: center');
+  segments[segments.length - 1].appendChild(textEnt);
 
   let visible = false;
 
-  // chain params
-  const SEGMENTS = 11;
-  const SEG_LEN = 0.18;
-  const CHAIN_COLOR = '#4CC3D9';
-  const segments = [];
-  const letters = [];
-  const label = 'Hello';
-
-  function buildChain() {
-    chain.innerHTML = '';
-    segments.length = 0;
-    letters.length = 0;
-    for (let i = 0; i < SEGMENTS; i++) {
-      const s = document.createElement('a-box');
-      s.setAttribute('width', SEG_LEN);
-      s.setAttribute('height', 0.22);
-      s.setAttribute('depth', 0.22);
-      s.setAttribute('material', `color: ${CHAIN_COLOR}; metalness: 0.15; roughness: 0.6`);
-      s.setAttribute('position', '0 0 0');
-      s.setAttribute('scale', '0 0 0');
-      s.classList.add('segment');
-      chain.appendChild(s);
-      segments.push(s);
-    }
-
-    const midStart = Math.floor((SEGMENTS - label.length) / 2);
-    for (let i = 0; i < label.length; i++) {
-      const ch = document.createElement('a-entity');
-      ch.setAttribute('text', `value: ${label[i]}; align: center; width: 0.9; color: #111; baseline: center`);
-      ch.setAttribute('preserve-size', '');
-      ch.setAttribute('face-camera', '');
-      const segIndex = Math.min(Math.max(midStart + i, 0), SEGMENTS - 1);
-      segments[segIndex].appendChild(ch);
-      ch.setAttribute('position', `0 0.18 0`);
-      ch.setAttribute('rotation', '-90 0 0');
-      letters.push(ch);
-    }
-  }
-
-  buildChain();
-
-  function showChain() {
+  function showCube() {
+    // hide any previous animations on segments
+    segments.forEach(s => {
+      s.removeAttribute('animation__pos');
+      s.removeAttribute('animation__scale');
+      s.removeAttribute('animation__rot');
+    });
+    // compute camera-facing direction and move cube far away along that direction
     try {
       const markerObj = marker.object3D;
       const camObj = document.querySelector('[camera]').object3D;
@@ -136,78 +132,87 @@ document.addEventListener('DOMContentLoaded', function () {
       camObj.getWorldPosition(cw);
 
       const dir = cw.clone().sub(mw);
-      if (dir.length() === 0) dir.set(0,1,0);
+      if (dir.length() === 0) {
+        dir.set(0, 1, 0);
+      }
       dir.normalize();
-      let side = dir.clone().cross(new AFRAME.THREE.Vector3(0,1,0)).normalize();
-      if (side.length() === 0) side.set(1,0,0);
 
-      const targetDistance = 1.8;
-      const worldEnd = mw.clone().add(dir.clone().multiplyScalar(targetDistance));
-      const control = mw.clone().add(dir.clone().multiplyScalar(targetDistance * 0.45)).add(side.multiplyScalar(0.9));
+      // choose a large distance so cube appears far from trigger in the camera direction
+      const targetDistance = 2.2; // meters in A-Frame units
+      const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
 
+      // convert world target to marker-local coordinates
+      const localTarget = worldTarget.clone();
+      markerObj.worldToLocal(localTarget);
+
+      // compute quadratic bezier control point to create bend
+      const p0 = new AFRAME.THREE.Vector3(0, 0, 0);
+      const p2 = localTarget.clone();
+      const mid = p0.clone().add(p2).multiplyScalar(0.5);
+      // create a lateral bend vector using camera-to-marker direction cross with up
+      const camW = cw.clone();
+      const markW = mw.clone();
+      const bendDir = camW.clone().sub(markW).normalize();
+      const lateral = (new AFRAME.THREE.Vector3()).crossVectors(bendDir, new AFRAME.THREE.Vector3(0,1,0)).normalize();
+      const bendMag = 0.8; // tune for amount of bend
+      const controlWorld = mw.clone().add(bendDir.multiplyScalar(targetDistance*0.45)).add(lateral.multiplyScalar(bendMag));
+      const controlLocal = controlWorld.clone();
+      markerObj.worldToLocal(controlLocal);
+
+      const p1 = controlLocal;
+
+      // position each segment along the quadratic bezier and orient them
       for (let i = 0; i < segments.length; i++) {
-        const t = (i + 1) / (segments.length + 1);
-        const p0 = mw;
-        const p1 = control;
-        const p2 = worldEnd;
-        const oneMinusT = 1 - t;
-        const worldP = new AFRAME.THREE.Vector3().addVectors(
-          p0.clone().multiplyScalar(oneMinusT * oneMinusT),
-          p1.clone().multiplyScalar(2 * oneMinusT * t)
-        ).add(p2.clone().multiplyScalar(t * t));
+        const t = i / (segments.length - 1);
+        const inv = 1 - t;
+        const pos = new AFRAME.THREE.Vector3().addScaledVector(p0, inv*inv).addScaledVector(p1, 2*inv*t).addScaledVector(p2, t*t);
 
-        const localP = worldP.clone();
-        markerObj.worldToLocal(localP);
+        // compute tangent for rotation: derivative of quadratic bezier
+        const tangent = p1.clone().sub(p0).multiplyScalar(2*inv).add(p2.clone().sub(p1).multiplyScalar(2*t));
+        tangent.normalize();
 
-        // small tangent estimate
-        const dt = 0.0001;
-        const tt = Math.min(1, t + dt);
-        const oneMinusTt = 1 - tt;
-        const worldP2 = new AFRAME.THREE.Vector3().addVectors(
-          p0.clone().multiplyScalar(oneMinusTt * oneMinusTt),
-          p1.clone().multiplyScalar(2 * oneMinusTt * tt)
-        ).add(p2.clone().multiplyScalar(tt * tt));
-        const tangent = worldP2.clone().sub(worldP).normalize();
+        // determine rotation angles: pitch (x) and yaw (y)
+        const yaw = Math.atan2(tangent.x, tangent.z) * 180 / Math.PI;
+        const pitch = Math.atan2(tangent.y, Math.sqrt(tangent.x*tangent.x + tangent.z*tangent.z)) * 180 / Math.PI;
 
         const seg = segments[i];
-        seg.removeAttribute('animation__pos');
-        seg.setAttribute('animation__pos', `property: position; to: ${localP.x} ${localP.y} ${localP.z}; dur: 700; easing: easeOutCubic`);
-        seg.removeAttribute('animation__scale');
-        seg.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 700; easing: easeOutCubic');
-
-        // orient segment along tangent in marker-local space
-        const localTangent = tangent.clone();
-        markerObj.worldToLocal(localTangent.add(worldP)).sub(localP).normalize();
-        const yaw = Math.atan2(localTangent.x, localTangent.z) * (180 / Math.PI);
-        const pitch = -Math.asin(localTangent.y) * (180 / Math.PI);
-        seg.setAttribute('rotation', `${pitch} ${yaw} 0`);
+        // animate to computed position and rotation and scale (each seg length along X)
+        const targetScale = `${SEG_LEN} ${SEG_THICK_Y} ${SEG_THICK_Z}`;
+        seg.setAttribute('animation__pos', `property: position; to: ${pos.x} ${pos.y} ${pos.z}; dur: 700; easing: easeOutElastic`);
+        seg.setAttribute('animation__rot', `property: rotation; to: ${pitch} ${yaw} 0; dur: 700; easing: easeOutElastic`);
+        seg.setAttribute('animation__scale', `property: scale; to: ${targetScale}; dur: 700; easing: easeOutElastic`);
       }
 
+      // position the back-plane on the opposite side of the marker (short distance)
       const backPlane = marker.querySelector('#back-plane');
       if (backPlane) {
-        const backWorld = mw.clone().add(dir.clone().multiplyScalar(-0.45));
+        const backWorld = mw.clone().add(dir.clone().multiplyScalar(-0.4));
         const backLocal = backWorld.clone();
         markerObj.worldToLocal(backLocal);
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      for (let i = 0; i < segments.length; i++) {
-        const seg = segments[i];
-        seg.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 600; easing: easeOutElastic');
-        seg.setAttribute('animation__pos', `property: position; to: 0 ${0.12 + i * (SEG_LEN * 0.5)} 0; dur: 600; easing: easeOutElastic`);
-      }
+      // fallback: small float above trigger
+      // fallback animate segments to a small float
+      segments.forEach((seg, i) => {
+        const s = i / (segments.length - 1);
+        seg.setAttribute('animation__scale', `property: scale; to: ${SEG_LEN} ${SEG_THICK_Y} ${SEG_THICK_Z}; dur: 600; easing: easeOutElastic`);
+        seg.setAttribute('animation__pos', `property: position; to: 0 ${0.45 + s*0.02} 0; dur: 600; easing: easeOutElastic`);
+      });
     }
     visible = true;
   }
 
-  function hideChain() {
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      seg.removeAttribute('animation__scale');
+  function hideCube() {
+    // hide/contract all segments
+    segments.forEach((seg, i) => {
       seg.removeAttribute('animation__pos');
+      seg.removeAttribute('animation__rot');
+      seg.removeAttribute('animation__scale');
       seg.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
       seg.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    }
+    });
+    // also reset back-plane
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
     visible = false;
@@ -216,12 +221,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Toggle on tap/click
   trigger.addEventListener('click', function (evt) {
     evt.stopPropagation();
-    if (visible) hideChain(); else showChain();
+    if (visible) hideCube(); else showCube();
   });
 
-  // reset when marker found
+  // Also allow tapping marker area to spawn when marker is visible
   marker.addEventListener('markerFound', () => {
-    hideChain();
+    // reset cube hidden when marker appears
+    hideCube();
   });
 });
 </script>
