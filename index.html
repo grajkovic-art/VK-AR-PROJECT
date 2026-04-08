@@ -35,8 +35,8 @@
 
     <!-- Cube that will come out of the trigger -->
     <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
-      <!-- Text on upper face (always faces camera) -->
-      <a-entity id="cube-text" face-camera position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+      <!-- Text on upper face (always faces camera, preserve world size) -->
+      <a-entity id="cube-text" face-camera preserve-size position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
     </a-box>
 
     <!-- Back plane (will be moved opposite camera direction) -->
@@ -60,6 +60,21 @@ AFRAME.registerComponent('face-camera', {
     const v = new AFRAME.THREE.Vector3();
     cameraObj.getWorldPosition(v);
     this.el.object3D.lookAt(v);
+  }
+});
+
+// Component: preserve element world size despite parent scaling
+AFRAME.registerComponent('preserve-size', {
+  schema: { base: { type: 'vec3', default: { x: 1, y: 1, z: 1 } } },
+  tick: function () {
+    const parent = this.el.parentEl;
+    if (!parent || !parent.object3D) return;
+    const pScale = parent.object3D.scale;
+    // avoid division by zero
+    const ix = pScale.x === 0 ? 1 : 1 / pScale.x;
+    const iy = pScale.y === 0 ? 1 : 1 / pScale.y;
+    const iz = pScale.z === 0 ? 1 : 1 / pScale.z;
+    this.el.object3D.scale.set(this.data.base.x * ix, this.data.base.y * iy, this.data.base.z * iz);
   }
 });
 
