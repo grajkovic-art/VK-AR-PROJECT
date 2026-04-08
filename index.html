@@ -70,12 +70,12 @@ AFRAME.registerComponent('face-camera', {
 AFRAME.registerComponent('spline-controller', {
   init: function () {
     const pts = [];
-    // define a smooth curved loop in front of the marker (marker-local coords)
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.2, -0.0));
-    pts.push(new AFRAME.THREE.Vector3(0.35, 0.35, -0.6));
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.55, -1.2));
-    pts.push(new AFRAME.THREE.Vector3(-0.35, 0.35, -0.6));
-    pts.push(new AFRAME.THREE.Vector3(0.0, 0.2, -0.0));
+    // smaller smooth curved loop in front of the marker (marker-local coords)
+    pts.push(new AFRAME.THREE.Vector3(0.0, 0.18, 0.0));
+    pts.push(new AFRAME.THREE.Vector3(0.25, 0.28, -0.35));
+    pts.push(new AFRAME.THREE.Vector3(0.0, 0.42, -0.7));
+    pts.push(new AFRAME.THREE.Vector3(-0.25, 0.28, -0.35));
+    pts.push(new AFRAME.THREE.Vector3(0.0, 0.18, 0.0));
 
     this.curve = new AFRAME.THREE.CatmullRomCurve3(pts);
     this.curve.closed = true;
@@ -119,15 +119,11 @@ AFRAME.registerComponent('follow-spline', {
     this.el.object3D.position.copy(point);
 
     if (this.data.look) {
-      // compute a small look target ahead along tangent in host-local coords
-      const lookLocal = point.clone().add(tangent.clone().multiplyScalar(0.05));
-      // convert to world coords for lookAt
-      const hostObj = this.host.object3D;
-      const worldTarget = hostObj.localToWorld(lookLocal.clone());
-      // object3D.lookAt expects world coordinates
-      this.el.object3D.lookAt(worldTarget);
-      // keep upright by zeroing X rotation (so text not tilted too much)
-      this.el.object3D.rotation.x = 0;
+      // compute yaw (rotation around Y) from the tangent in host-local coords
+      // atan2(x, z) gives heading where z is forward
+      const yaw = Math.atan2(tangent.x, tangent.z);
+      // apply yaw while keeping x and z rotations zero to stay upright
+      this.el.object3D.rotation.set(0, yaw, 0);
     }
   }
 });
