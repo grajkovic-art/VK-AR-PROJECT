@@ -39,10 +39,7 @@
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
     <!-- Ring around trigger (hidden by default, animated on show) -->
-    <a-ring id="ring" position="0 0.01 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="0.75" material="color: #ffd54f; opacity: 0.0; side: double" scale="0 0 0"></a-ring>
-
-    <!-- Circular text arranged around the trigger -->
-    <a-entity id="ring-text" rotation="-90 0 0" circular-text="text: Trotoar uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju; radius: 0.95; size: 0.18; color: #111"></a-entity>
+    <a-ring id="ring" position="0 0.01 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="0.75" material="color: #CC80B6; opacity: 1; side: double" scale="0 0 0"></a-ring>
 
   </a-marker>
 
@@ -80,42 +77,6 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
-// Component: arrange text characters around a circle (flat ring)
-AFRAME.registerComponent('circular-text', {
-  schema: {
-    text: { type: 'string', default: '' },
-    radius: { type: 'number', default: 0.9 },
-    size: { type: 'number', default: 0.18 },
-    color: { type: 'color', default: '#111' }
-  },
-  init: function () {
-    const data = this.data;
-    const str = data.text || '';
-    const chars = Array.from(str);
-    const n = chars.length || 1;
-    // clear existing
-    while (this.el.firstChild) this.el.removeChild(this.el.firstChild);
-
-    for (let i = 0; i < n; i++) {
-      const ch = chars[i];
-      const angle = (i / n) * Math.PI * 2; // radians
-      const x = data.radius * Math.cos(angle);
-      const z = data.radius * Math.sin(angle);
-      const deg = (angle * 180) / Math.PI;
-
-      const ent = document.createElement('a-entity');
-      // position slightly above the ring plane
-      ent.setAttribute('position', `${x} 0.02 ${z}`);
-      // rotate so characters follow circle and face outward
-      const rotY = deg + 90;
-      ent.setAttribute('rotation', `0 ${rotY} 0`);
-      ent.setAttribute('text', `value: ${ch === ' ' ? '\u00A0' : ch}; align: center; baseline: center; color: ${data.color}; width: ${data.size * 6}`);
-      ent.setAttribute('preserve-size', '');
-      this.el.appendChild(ent);
-    }
-  }
-});
-
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
@@ -150,12 +111,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // show and fade-in ring around trigger
+      // show ring around trigger (solid color)
       if (ring) {
         ring.removeAttribute('animation__scale');
-        ring.removeAttribute('animation__mat');
         ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
-        ring.setAttribute('animation__mat', 'property: material.opacity; to: 0.35; dur: 500; easing: linear');
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -167,12 +126,10 @@ document.addEventListener('DOMContentLoaded', function () {
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      // fallback: just show ring
+      // fallback: just show ring (solid)
       if (ring) {
         ring.removeAttribute('animation__scale');
-        ring.removeAttribute('animation__mat');
         ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
-        ring.setAttribute('animation__mat', 'property: material.opacity; to: 0.35; dur: 500; easing: linear');
       }
     }
     visible = true;
@@ -184,9 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
     if (ring) {
       ring.removeAttribute('animation__scale');
-      ring.removeAttribute('animation__mat');
       ring.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 300; easing: easeOutQuad');
-      ring.setAttribute('animation__mat', 'property: material.opacity; to: 0; dur: 250; easing: linear');
     }
     visible = false;
   }
