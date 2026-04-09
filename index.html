@@ -38,10 +38,8 @@
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
-    <!-- 3D model (bomba) container: model is offset inside so its LEFT side sits at container origin -->
-    <a-entity id="bomba-container" position="0 0 0" scale="0 0 0" visible="false">
-      <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" scale="1 1 1" visible="true" animation-mixer="loop: repeat"></a-entity>
-    </a-entity>
+    <!-- 3D model (bomba) will spawn when trigger is activated -->
+    <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
 
   </a-marker>
 
@@ -84,9 +82,29 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const bombaContainer = marker.querySelector('#bomba-container');
   const bomba = marker.querySelector('#bomba');
   if (!trigger) return;
+
+  // compute bomba bounding info after model loads so we can offset by its right side
+  if (bomba) {
+    bomba.addEventListener('model-loaded', () => {
+      try {
+        const obj = bomba.getObject3D('mesh') || bomba.object3D;
+        // temporarily set scale to 1 to measure natural bounds
+        const prevScale = bomba.object3D.scale.clone();
+        bomba.object3D.scale.set(1, 1, 1);
+        const bbox = new AFRAME.THREE.Box3().setFromObject(bomba.object3D);
+        const size = bbox.getSize(new AFRAME.THREE.Vector3());
+        // final intended display scale when spawned
+        const finalScale = 0.6;
+        bomba.__halfWidth = (size.x / 2) * finalScale;
+        // restore previous scale (likely 0)
+        bomba.object3D.scale.copy(prevScale);
+      } catch (e) {
+        bomba.__halfWidth = 0;
+      }
+    });
+  }
 
   let visible = false;
 
@@ -114,13 +132,15 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // spawn and animate bomba container
-      if (bombaContainer) {
-        bombaContainer.setAttribute('visible', 'true');
-        bombaContainer.removeAttribute('animation__scale');
-        bombaContainer.removeAttribute('animation__pos');
-        bombaContainer.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
-        bombaContainer.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
+      // spawn and animate bomba model; offset so its right side touches the target
+      if (bomba) {
+        bomba.setAttribute('visible', 'true');
+        bomba.removeAttribute('animation__scale');
+        bomba.removeAttribute('animation__pos');
+        const halfW = bomba.__halfWidth || 0;
+        const posX = localTarget.x - halfW;
+        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
+        bomba.setAttribute('animation__pos', `property: position; to: ${posX} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -132,29 +152,29 @@ document.addEventListener('DOMContentLoaded', function () {
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      // fallback: show bomba container near trigger
-      if (bombaContainer) {
-        bombaContainer.setAttribute('visible', 'true');
-        bombaContainer.removeAttribute('animation__scale');
-        bombaContainer.removeAttribute('animation__pos');
-        bombaContainer.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
-        bombaContainer.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
+      // fallback: show bomba near trigger
+      if (bomba) {
+        bomba.setAttribute('visible', 'true');
+        bomba.removeAttribute('animation__scale');
+        bomba.removeAttribute('animation__pos');
+        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
+        bomba.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
       }
     }
     visible = true;
   }
 
   function hideCube() {
-    // also reset back-plane and hide bomba container
+    // also reset back-plane and hide bomba
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
-    if (bombaContainer) {
-      bombaContainer.removeAttribute('animation__scale');
-      bombaContainer.removeAttribute('animation__pos');
-      bombaContainer.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-      bombaContainer.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
+    if (bomba) {
+      bomba.removeAttribute('animation__scale');
+      bomba.removeAttribute('animation__pos');
+      bomba.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+      bomba.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
       // optionally hide after animation
-      setTimeout(() => { bombaContainer.setAttribute('visible', 'false'); }, 360);
+      setTimeout(() => { bomba.setAttribute('visible', 'false'); }, 360);
     }
     visible = false;
   }
@@ -164,21 +184,6 @@ document.addEventListener('DOMContentLoaded', function () {
     evt.stopPropagation();
     if (visible) hideCube(); else showCube();
   });
-
-  // after model load, offset the model so its LEFT side aligns with container origin
-  if (bomba) {
-    bomba.addEventListener('model-loaded', function () {
-      try {
-        const obj = bomba.getObject3D('mesh') || bomba.getObject3D('scene') || bomba.object3D;
-        const box = new AFRAME.THREE.Box3().setFromObject(obj);
-        const halfWidth = (box.max.x - box.min.x) / 2;
-        // position model +halfWidth on X so left face rests at container origin
-        bomba.setAttribute('position', `${halfWidth} 0 0`);
-      } catch (e) {
-        console.warn('bomba model offset failed', e);
-      }
-    });
-  }
 
   // Also allow tapping marker area to spawn when marker is visible
   marker.addEventListener('markerFound', () => {
