@@ -79,6 +79,27 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
+// Component: face camera only on yaw (rotate around Y to face camera)
+AFRAME.registerComponent('face-camera-yaw', {
+  tick: function () {
+    const camEl = document.querySelector('[camera]');
+    if (!camEl) return;
+    const camPos = new AFRAME.THREE.Vector3();
+    camEl.object3D.getWorldPosition(camPos);
+    const myPos = new AFRAME.THREE.Vector3();
+    this.el.object3D.getWorldPosition(myPos);
+    const dir = camPos.clone().sub(myPos);
+    dir.y = 0; // ignore vertical
+    if (dir.lengthSq() === 0) return;
+    dir.normalize();
+    const yaw = Math.atan2(dir.x, dir.z); // radians
+    const yawDeg = AFRAME.THREE.Math.radToDeg(yaw);
+    // keep X and Z rotation from markup (usually -90 on X to lay flat)
+    const current = this.el.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+    this.el.setAttribute('rotation', `${current.x} ${yawDeg} ${current.z}`);
+  }
+});
+
   // Helper: create circular text along a ring by placing characters around circumference
   function generateCircularText(container, textStr, radius, yOffset, charWidth) {
     if (!container) return;
@@ -111,6 +132,32 @@ AFRAME.registerComponent('preserve-size', {
 
       container.appendChild(charEl);
     }
+  }
+
+  function placeFrontText(container, textStr, radius, yOffset, width) {
+    if (!container) return;
+    let el = container.querySelector('#ring-front-text');
+    if (!el) {
+      el = document.createElement('a-entity');
+      el.setAttribute('id', 'ring-front-text');
+      // lay flat on ring, we will rotate yaw to face camera
+      el.setAttribute('rotation', '-90 0 0');
+      el.setAttribute('face-camera-yaw', '');
+      el.setAttribute('preserve-size', '');
+      container.appendChild(el);
+    }
+    // compute angle to camera in marker-local coordinates
+    const markerObj = marker.object3D;
+    const camObj = document.querySelector('[camera]').object3D;
+    const cw = new AFRAME.THREE.Vector3();
+    camObj.getWorldPosition(cw);
+    const cwLocal = cw.clone();
+    markerObj.worldToLocal(cwLocal);
+    const angle = Math.atan2(cwLocal.z, cwLocal.x);
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+    el.setAttribute('position', `${x} ${yOffset} ${z}`);
+    el.setAttribute('text', `value: ${textStr}; align: center; width: ${width}; color: #111; baseline: center`);
   }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -155,7 +202,8 @@ document.addEventListener('DOMContentLoaded', function () {
         solid.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
       }
       if (textContainer) {
-        generateCircularText(textContainer, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.02, 0.35);
+        // place full sentence at the front of the ring facing camera
+        placeFrontText(textContainer, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.06, 0.9);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -175,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
         solidFallback.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
       }
       if (textContainerFallback) {
-        generateCircularText(textContainerFallback, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.02, 0.35);
+        placeFrontText(textContainerFallback, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.06, 0.9);
       }
     }
     visible = true;
