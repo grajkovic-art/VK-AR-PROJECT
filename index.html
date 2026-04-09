@@ -103,18 +103,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       dir.normalize();
 
-      // choose a large distance so model appears far from trigger in the camera direction
+      // choose a large distance so cube appears far from trigger in the camera direction
       const targetDistance = 2.2; // meters in A-Frame units
-      const forwardOffset = 0.6; // extra forward offset so model clears the trigger
-      const upOffset = 0.6; // raise model above marker so it's not attached by its bottom
-
       const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
-      // apply forward + upward offsets in world space
-      const worldTargetAdjusted = worldTarget.clone().add(dir.clone().multiplyScalar(forwardOffset));
-      worldTargetAdjusted.y += upOffset;
 
-      // convert adjusted world target to marker-local coordinates
-      const localTarget = worldTargetAdjusted.clone();
+      // convert world target to marker-local coordinates
+      const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
       // spawn and animate bomba model
