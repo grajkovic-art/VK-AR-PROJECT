@@ -96,9 +96,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const worldUp = new AFRAME.THREE.Vector3(0, 1, 0);
         const dot = upVec.dot(worldUp);
         // If dot is low, the model's top is not facing world up; apply a 90deg correction around X
-        // Always apply +90° rotation on X and keep Z=90° so model top faces up and orientation matches request
-        bomba.__rotationCorrection = { x: 90, y: 0, z: 90 };
-        bomba.setAttribute('rotation', '90 0 90');
+        // Always apply +90° rotation on X and Y, and keep Z=90° as requested
+        bomba.__rotationCorrection = { x: 90, y: 90, z: 90 };
+        bomba.setAttribute('rotation', '90 90 90');
 
         // temporarily set scale to 1 to measure natural bounds after rotation
         const prevScale = bomba.object3D.scale.clone();
