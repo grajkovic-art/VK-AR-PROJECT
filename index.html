@@ -38,8 +38,10 @@
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Ring around trigger (hidden by default, animated on show) -->
-    <a-ring id="ring" position="0 0.01 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="0.75" material="color: #CC80B6; opacity: 1; side: double" scale="0 0 0"></a-ring>
+    <!-- Solid torus ring around trigger (hidden by default) -->
+    <a-torus id="solid-ring" position="0 0.01 0" rotation="-90 0 0" radius="0.65" radius-tubular="0.08" material="color: #CC80B6; metalness: 0.1; roughness: 0.4" scale="0 0 0"></a-torus>
+    <!-- Container for circular text that follows ring path -->
+    <a-entity id="ring-text-container" position="0 0.01 0" rotation="-90 0 0"></a-entity>
 
   </a-marker>
 
@@ -77,6 +79,37 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
+  // Helper: create circular text along a ring by placing characters around circumference
+  function generateCircularText(container, textStr, radius, yOffset, charWidth) {
+    if (!container) return;
+    // clear previous
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    const total = textStr.length;
+    if (total === 0) return;
+
+    const startAngle = -Math.PI / 2 - (Math.PI * 2) / total / 2; // center at top
+    const step = (Math.PI * 2) / total;
+
+    for (let i = 0; i < total; i++) {
+      const ch = textStr[i];
+      const angle = startAngle + i * step;
+      const x = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+
+      const charEl = document.createElement('a-entity');
+      charEl.setAttribute('text', `value: ${ch}; align: center; width: ${charWidth}; color: #111; baseline: center`);
+      charEl.setAttribute('position', `${x} ${yOffset} ${z}`);
+      // rotate so the character faces outward along radial direction (tangent appearance)
+      const rotY = -THREE.Math.radToDeg(angle) + 90;
+      charEl.setAttribute('rotation', `0 ${rotY} 0`);
+      // keep readable size irrespective of parent scale
+      charEl.setAttribute('preserve-size', '');
+
+      container.appendChild(charEl);
+    }
+  }
+
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
@@ -111,10 +144,15 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // show ring around trigger (solid color)
-      if (ring) {
-        ring.removeAttribute('animation__scale');
-        ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+      // show solid torus and populate circular text
+      const solid = marker.querySelector('#solid-ring');
+      const textContainer = marker.querySelector('#ring-text-container');
+      if (solid) {
+        solid.removeAttribute('animation__scale');
+        solid.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+      }
+      if (textContainer) {
+        generateCircularText(textContainer, 'HELLO', 0.65, 0.02, 0.22);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -126,10 +164,15 @@ document.addEventListener('DOMContentLoaded', function () {
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      // fallback: just show ring (solid)
-      if (ring) {
-        ring.removeAttribute('animation__scale');
-        ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+      // fallback: show solid ring
+      const solidFallback = marker.querySelector('#solid-ring');
+      const textContainerFallback = marker.querySelector('#ring-text-container');
+      if (solidFallback) {
+        solidFallback.removeAttribute('animation__scale');
+        solidFallback.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+      }
+      if (textContainerFallback) {
+        generateCircularText(textContainerFallback, 'HELLO', 0.65, 0.02, 0.22);
       }
     }
     visible = true;
@@ -139,9 +182,15 @@ document.addEventListener('DOMContentLoaded', function () {
     // also reset back-plane and hide ring
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
-    if (ring) {
-      ring.removeAttribute('animation__scale');
-      ring.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 300; easing: easeOutQuad');
+    // hide solid ring and clear circular text
+    const solid = marker.querySelector('#solid-ring');
+    const textContainer = marker.querySelector('#ring-text-container');
+    if (solid) {
+      solid.removeAttribute('animation__scale');
+      solid.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 300; easing: easeOutQuad');
+    }
+    if (textContainer) {
+      while (textContainer.firstChild) textContainer.removeChild(textContainer.firstChild);
     }
     visible = false;
   }
