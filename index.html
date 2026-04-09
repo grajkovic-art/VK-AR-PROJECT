@@ -39,7 +39,7 @@
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
     <!-- 3D model (bomba) will spawn when trigger is activated -->
-    <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" rotation="90 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
+    <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
 
   </a-marker>
 
@@ -85,6 +85,26 @@ document.addEventListener('DOMContentLoaded', function () {
   const bomba = marker.querySelector('#bomba');
   if (!trigger) return;
 
+  let bombaLoaded = false;
+  const bombaSizeLocal = new AFRAME.THREE.Vector3();
+  const finalScale = new AFRAME.THREE.Vector3(0.6, 0.6, 0.6);
+
+  if (bomba) {
+    bomba.addEventListener('model-loaded', (e) => {
+      const obj = bomba.getObject3D('mesh');
+      if (!obj) return;
+      // temporarily measure size with scale 1
+      const origScale = obj.scale.clone();
+      obj.scale.set(1, 1, 1);
+      const box = new AFRAME.THREE.Box3().setFromObject(obj);
+      box.getSize(bombaSizeLocal);
+      // restore original scale
+      obj.scale.copy(origScale);
+      bombaLoaded = true;
+      console.log('bomba model loaded, local size:', bombaSizeLocal);
+    });
+  }
+
   let visible = false;
 
   function showCube() {
@@ -111,14 +131,35 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // spawn and animate bomba model
+      // spawn and animate bomba model; align its RIGHT side to the target point
       if (bomba) {
         bomba.setAttribute('visible', 'true');
-        // ensure model plays animations (animation-mixer should loop)
-        bomba.removeAttribute('animation__scale');
-        bomba.removeAttribute('animation__pos');
-        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
-        bomba.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
+
+        // if model geometry not yet measured, set rough position and scale; animation will run after load
+        if (!bombaLoaded) {
+          // place approximately at target and animate scale in
+          bomba.setAttribute('position', `${localTarget.x} ${localTarget.y} ${localTarget.z}`);
+          bomba.removeAttribute('animation__scale');
+          bomba.setAttribute('animation__scale', `property: scale; to: ${finalScale.x} ${finalScale.y} ${finalScale.z}; dur: 700; easing: easeOutElastic`);
+        } else {
+          // compute box width in world units when scaled by finalScale
+          const worldWidth = bombaSizeLocal.x * finalScale.x;
+          const halfWidth = worldWidth / 2;
+
+          // marker's local +X direction in world coordinates
+          const markerPos = new AFRAME.THREE.Vector3();
+          marker.object3D.getWorldPosition(markerPos);
+          const markerXAxisWorld = new AFRAME.THREE.Vector3(1, 0, 0).applyMatrix4(marker.object3D.matrixWorld).sub(markerPos).normalize();
+
+          const desiredWorld = worldTarget.clone().sub(markerXAxisWorld.clone().multiplyScalar(halfWidth));
+          const desiredLocal = desiredWorld.clone();
+          marker.object3D.worldToLocal(desiredLocal);
+
+          bomba.removeAttribute('animation__scale');
+          bomba.removeAttribute('animation__pos');
+          bomba.setAttribute('animation__scale', `property: scale; to: ${finalScale.x} ${finalScale.y} ${finalScale.z}; dur: 700; easing: easeOutElastic`);
+          bomba.setAttribute('animation__pos', `property: position; to: ${desiredLocal.x} ${desiredLocal.y} ${desiredLocal.z}; dur: 700; easing: easeOutElastic`);
+        }
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -135,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
         bomba.setAttribute('visible', 'true');
         bomba.removeAttribute('animation__scale');
         bomba.removeAttribute('animation__pos');
-        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
+        bomba.setAttribute('animation__scale', `property: scale; to: ${finalScale.x} ${finalScale.y} ${finalScale.z}; dur: 600; easing: easeOutElastic`);
         bomba.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
       }
     }
