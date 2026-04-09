@@ -88,7 +88,8 @@ AFRAME.registerComponent('preserve-size', {
     const total = textStr.length;
     if (total === 0) return;
 
-    const startAngle = -Math.PI / 2 - (Math.PI * 2) / total / 2; // center at top
+    // place characters evenly around the ring, centered at top
+    const startAngle = -Math.PI / 2 - (Math.PI * 2) / total / 2;
     const step = (Math.PI * 2) / total;
 
     for (let i = 0; i < total; i++) {
@@ -98,11 +99,13 @@ AFRAME.registerComponent('preserve-size', {
       const z = radius * Math.sin(angle);
 
       const charEl = document.createElement('a-entity');
+      // ensure characters are visible: larger width and black color
       charEl.setAttribute('text', `value: ${ch}; align: center; width: ${charWidth}; color: #111; baseline: center`);
       charEl.setAttribute('position', `${x} ${yOffset} ${z}`);
-      // rotate so the character faces outward along radial direction (tangent appearance)
-      const rotY = -THREE.Math.radToDeg(angle) + 90;
-      charEl.setAttribute('rotation', `0 ${rotY} 0`);
+      // rotate so the character follows ring tangent (readable along path)
+      const rotY = -AFRAME.THREE.Math.radToDeg(angle) + 90;
+      // because the container is rotated -90 on X, rotate characters -90 on X to lie flat
+      charEl.setAttribute('rotation', `-90 ${rotY} 0`);
       // keep readable size irrespective of parent scale
       charEl.setAttribute('preserve-size', '');
 
@@ -152,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
         solid.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
       }
       if (textContainer) {
-        generateCircularText(textContainer, 'HELLO', 0.65, 0.02, 0.22);
+        generateCircularText(textContainer, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.02, 0.35);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -172,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
         solidFallback.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
       }
       if (textContainerFallback) {
-        generateCircularText(textContainerFallback, 'HELLO', 0.65, 0.02, 0.22);
+        generateCircularText(textContainerFallback, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.02, 0.35);
       }
     }
     visible = true;
