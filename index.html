@@ -33,17 +33,16 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Cube that will come out of the trigger -->
-    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
-      <!-- Text on upper face (always faces camera, preserve world size) -->
-      <a-entity id="cube-text" face-camera preserve-size position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
-    </a-box>
+    <!-- Cube removed as requested -->
 
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
     <!-- Ring around trigger (hidden by default, animated on show) -->
     <a-ring id="ring" position="0 0.01 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="0.75" material="color: #ffd54f; opacity: 0.0; side: double" scale="0 0 0"></a-ring>
+
+    <!-- Circular text arranged around the trigger -->
+    <a-entity id="ring-text" rotation="-90 0 0" circular-text="text: Trotoar uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju; radius: 0.95; size: 0.18; color: #111"></a-entity>
 
   </a-marker>
 
@@ -81,21 +80,54 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
+// Component: arrange text characters around a circle (flat ring)
+AFRAME.registerComponent('circular-text', {
+  schema: {
+    text: { type: 'string', default: '' },
+    radius: { type: 'number', default: 0.9 },
+    size: { type: 'number', default: 0.18 },
+    color: { type: 'color', default: '#111' }
+  },
+  init: function () {
+    const data = this.data;
+    const str = data.text || '';
+    const chars = Array.from(str);
+    const n = chars.length || 1;
+    // clear existing
+    while (this.el.firstChild) this.el.removeChild(this.el.firstChild);
+
+    for (let i = 0; i < n; i++) {
+      const ch = chars[i];
+      const angle = (i / n) * Math.PI * 2; // radians
+      const x = data.radius * Math.cos(angle);
+      const z = data.radius * Math.sin(angle);
+      const deg = (angle * 180) / Math.PI;
+
+      const ent = document.createElement('a-entity');
+      // position slightly above the ring plane
+      ent.setAttribute('position', `${x} 0.02 ${z}`);
+      // rotate so characters follow circle and face outward
+      const rotY = deg + 90;
+      ent.setAttribute('rotation', `0 ${rotY} 0`);
+      ent.setAttribute('text', `value: ${ch === ' ' ? '\u00A0' : ch}; align: center; baseline: center; color: ${data.color}; width: ${data.size * 6}`);
+      ent.setAttribute('preserve-size', '');
+      this.el.appendChild(ent);
+    }
+  }
+});
+
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const cube = marker.querySelector('#cube');
   const ring = marker.querySelector('#ring');
-  if (!trigger || !cube) return;
+  if (!trigger) return;
 
   let visible = false;
 
   function showCube() {
-    cube.removeAttribute('animation__scale');
-    cube.removeAttribute('animation__pos');
-    // compute camera-facing direction and move cube far away along that direction
+    // compute camera-facing direction and move back-plane to opposite side
     try {
       const markerObj = marker.object3D;
       const camObj = document.querySelector('[camera]').object3D;
@@ -118,10 +150,6 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // animate scale and position to the computed local target
-      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 700; easing: easeOutElastic');
-      cube.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
-
       // show and fade-in ring around trigger
       if (ring) {
         ring.removeAttribute('animation__scale');
@@ -139,18 +167,18 @@ document.addEventListener('DOMContentLoaded', function () {
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      // fallback: small float above trigger
-      cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 600; easing: easeOutElastic');
-      cube.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
+      // fallback: just show ring
+      if (ring) {
+        ring.removeAttribute('animation__scale');
+        ring.removeAttribute('animation__mat');
+        ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+        ring.setAttribute('animation__mat', 'property: material.opacity; to: 0.35; dur: 500; easing: linear');
+      }
     }
     visible = true;
   }
 
   function hideCube() {
-    cube.removeAttribute('animation__scale');
-    cube.removeAttribute('animation__pos');
-    cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
     // also reset back-plane and hide ring
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
