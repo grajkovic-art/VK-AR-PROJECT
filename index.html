@@ -33,11 +33,17 @@
     <!-- Visible trigger surface (tap this) -->
     <a-plane id="trigger" class="clickable" position="0 0 0" rotation="-90 0 0" width="1" height="1" material="color: #ffffff; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Curved extruded object that will come out of the trigger -->
-    <a-entity id="cube" bend-object="text: Hello; length: 2.2; segments: 80; width: 0.8; height: 0.25; amplitude: 0.9; charsSpacing: 0.18" position="0 0 0"></a-entity>
+    <!-- Cube that will come out of the trigger -->
+    <a-box id="cube" position="0 0 0" scale="0 0 0" material="color: #4CC3D9; metalness: 0.2; roughness: 0.6">
+      <!-- Text on upper face (always faces camera, preserve world size) -->
+      <a-entity id="cube-text" face-camera preserve-size position="0 0.6 0" rotation="-90 0 0" text="value: Hello; align: center; width: 2.4; color: #111; baseline: center"></a-entity>
+    </a-box>
 
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
+
+    <!-- Ring around trigger (hidden by default, animated on show) -->
+    <a-ring id="ring" position="0 0.01 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="0.75" material="color: #ffd54f; opacity: 0.0; side: double" scale="0 0 0"></a-ring>
 
   </a-marker>
 
@@ -75,93 +81,13 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
-// Component: create an extruded curved object and place bent text along its top
-AFRAME.registerComponent('bend-object', {
-  schema: {
-    text: { type: 'string', default: 'Hello' },
-    length: { type: 'number', default: 2.2 },
-    segments: { type: 'int', default: 40 },
-    width: { type: 'number', default: 0.8 },
-    height: { type: 'number', default: 0.25 },
-    amplitude: { type: 'number', default: 0.6 },
-    charsSpacing: { type: 'number', default: 0.2 }
-  },
-  init: function () {
-    const THREE = AFRAME.THREE;
-    const d = this.data;
-    const el = this.el;
-
-    // Build a smooth curve along local +Z with Y offsets (sine wave)
-    const points = [];
-    const steps = d.segments;
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const z = t * d.length;
-      const y = Math.sin(t * Math.PI * 2) * d.amplitude * (0.5 - Math.abs(t - 0.5));
-      points.push(new THREE.Vector3(0, y, z));
-    }
-
-    const curve = new THREE.CatmullRomCurve3(points);
-
-    // rectangular cross-section shape
-    const w = d.width / 2;
-    const h = d.height / 2;
-    const shape = new THREE.Shape();
-    shape.moveTo(-w, -h);
-    shape.lineTo(w, -h);
-    shape.lineTo(w, h);
-    shape.lineTo(-w, h);
-    shape.lineTo(-w, -h);
-
-    const extrudeSettings = { steps: steps, bevelEnabled: false, extrudePath: curve };
-    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geom.computeVertexNormals();
-
-    const mat = new THREE.MeshStandardMaterial({ color: 0x4CC3D9, metalness: 0.2, roughness: 0.6 });
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-
-    // Center geometry so its start is near local origin (small offset)
-    // by default extrude starts at z=0, so keep as-is.
-
-    // attach mesh to this entity
-    el.setObject3D('mesh', mesh);
-
-    // Place characters along the top center of the extruded path
-    const text = this.data.text || '';
-    const chars = text.split('');
-    const charCount = chars.length;
-    const startT = 0.12;
-    const endT = 0.88;
-
-    for (let i = 0; i < charCount; i++) {
-      const u = startT + (i / Math.max(1, charCount - 1)) * (endT - startT);
-      const pt = curve.getPointAt(u);
-      // slightly above the top surface
-      const offsetY = d.height * 0.6;
-
-      const charEl = document.createElement('a-entity');
-      charEl.setAttribute('text', `value: ${chars[i]}; align: center; width: 0.4; color: #111; baseline: center`);
-      charEl.setAttribute('position', `${pt.x} ${pt.y + offsetY} ${pt.z}`);
-      charEl.setAttribute('preserve-size', 'base: 1 1 1');
-      charEl.setAttribute('face-camera', '');
-      el.appendChild(charEl);
-    }
-  },
-  remove: function () {
-    if (this.el.getObject3D('mesh')) {
-      this.el.removeObject3D('mesh');
-    }
-  }
-});
-
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
   const cube = marker.querySelector('#cube');
+  const ring = marker.querySelector('#ring');
   if (!trigger || !cube) return;
 
   let visible = false;
@@ -196,6 +122,14 @@ document.addEventListener('DOMContentLoaded', function () {
       cube.setAttribute('animation__scale', 'property: scale; to: 1.4 0.25 0.25; dur: 700; easing: easeOutElastic');
       cube.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
 
+      // show and fade-in ring around trigger
+      if (ring) {
+        ring.removeAttribute('animation__scale');
+        ring.removeAttribute('animation__mat');
+        ring.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
+        ring.setAttribute('animation__mat', 'property: material.opacity; to: 0.35; dur: 500; easing: linear');
+      }
+
       // position the back-plane on the opposite side of the marker (short distance)
       const backPlane = marker.querySelector('#back-plane');
       if (backPlane) {
@@ -217,9 +151,15 @@ document.addEventListener('DOMContentLoaded', function () {
     cube.removeAttribute('animation__pos');
     cube.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
     cube.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
-    // also reset back-plane
+    // also reset back-plane and hide ring
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
+    if (ring) {
+      ring.removeAttribute('animation__scale');
+      ring.removeAttribute('animation__mat');
+      ring.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 300; easing: easeOutQuad');
+      ring.setAttribute('animation__mat', 'property: material.opacity; to: 0; dur: 250; easing: linear');
+    }
     visible = false;
   }
 
