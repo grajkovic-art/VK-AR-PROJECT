@@ -90,9 +90,25 @@ document.addEventListener('DOMContentLoaded', function () {
     bomba.addEventListener('model-loaded', () => {
       try {
         const obj = bomba.getObject3D('mesh') || bomba.object3D;
-        // temporarily set scale to 1 to measure natural bounds
+        // Attempt to ensure model's 'top' points up. If model's local up isn't aligned, rotate it.
+        // Compute model local up in world space
+        const upVec = new AFRAME.THREE.Vector3(0, 1, 0).applyQuaternion(bomba.object3D.quaternion);
+        const worldUp = new AFRAME.THREE.Vector3(0, 1, 0);
+        const dot = upVec.dot(worldUp);
+        // If dot is low, the model's top is not facing world up; apply a 90deg correction around X
+        if (dot < 0.6) {
+          // store correction and apply rotation so top faces up
+          bomba.__rotationCorrection = { x: 90, y: 0, z: 0 };
+          bomba.setAttribute('rotation', '90 0 0');
+        } else {
+          bomba.__rotationCorrection = { x: 0, y: 0, z: 0 };
+        }
+
+        // temporarily set scale to 1 to measure natural bounds after rotation
         const prevScale = bomba.object3D.scale.clone();
         bomba.object3D.scale.set(1, 1, 1);
+        // update world matrices so bounding box is accurate
+        bomba.object3D.updateMatrixWorld(true);
         const bbox = new AFRAME.THREE.Box3().setFromObject(bomba.object3D);
         const size = bbox.getSize(new AFRAME.THREE.Vector3());
         // final intended display scale when spawned
