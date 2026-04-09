@@ -38,10 +38,8 @@
     <!-- Back plane (will be moved opposite camera direction) -->
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
-    <!-- Solid torus ring around trigger (hidden by default) -->
-    <a-torus id="solid-ring" position="0 0.01 0" rotation="-90 0 0" radius="0.65" radius-tubular="0.08" material="color: #CC80B6; metalness: 0.1; roughness: 0.4" scale="0 0 0"></a-torus>
-    <!-- Container for circular text that follows ring path -->
-    <a-entity id="ring-text-container" position="0 0.01 0" rotation="-90 0 0"></a-entity>
+    <!-- 3D model (bomba) will spawn when trigger is activated -->
+    <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
 
   </a-marker>
 
@@ -79,99 +77,18 @@ AFRAME.registerComponent('preserve-size', {
   }
 });
 
-// Component: face camera only on yaw (rotate around Y to face camera)
-AFRAME.registerComponent('face-camera-yaw', {
-  tick: function () {
-    const camEl = document.querySelector('[camera]');
-    if (!camEl) return;
-    const camPos = new AFRAME.THREE.Vector3();
-    camEl.object3D.getWorldPosition(camPos);
-    const myPos = new AFRAME.THREE.Vector3();
-    this.el.object3D.getWorldPosition(myPos);
-    const dir = camPos.clone().sub(myPos);
-    dir.y = 0; // ignore vertical
-    if (dir.lengthSq() === 0) return;
-    dir.normalize();
-    const yaw = Math.atan2(dir.x, dir.z); // radians
-    const yawDeg = AFRAME.THREE.Math.radToDeg(yaw);
-    // keep X and Z rotation from markup (usually -90 on X to lay flat)
-    const current = this.el.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
-    this.el.setAttribute('rotation', `${current.x} ${yawDeg} ${current.z}`);
-  }
-});
-
-  // Helper: create circular text along a ring by placing characters around circumference
-  function generateCircularText(container, textStr, radius, yOffset, charWidth) {
-    if (!container) return;
-    // clear previous
-    while (container.firstChild) container.removeChild(container.firstChild);
-
-    const total = textStr.length;
-    if (total === 0) return;
-
-    // place characters evenly around the ring, centered at top
-    const startAngle = -Math.PI / 2 - (Math.PI * 2) / total / 2;
-    const step = (Math.PI * 2) / total;
-
-    for (let i = 0; i < total; i++) {
-      const ch = textStr[i];
-      const angle = startAngle + i * step;
-      const x = radius * Math.cos(angle);
-      const z = radius * Math.sin(angle);
-
-      const charEl = document.createElement('a-entity');
-      // ensure characters are visible: larger width and black color
-      charEl.setAttribute('text', `value: ${ch}; align: center; width: ${charWidth}; color: #111; baseline: center`);
-      charEl.setAttribute('position', `${x} ${yOffset} ${z}`);
-      // rotate so the character follows ring tangent (readable along path)
-      const rotY = -AFRAME.THREE.Math.radToDeg(angle) + 90;
-      // because the container is rotated -90 on X, rotate characters -90 on X to lie flat
-      charEl.setAttribute('rotation', `-90 ${rotY} 0`);
-      // keep readable size irrespective of parent scale
-      charEl.setAttribute('preserve-size', '');
-
-      container.appendChild(charEl);
-    }
-  }
-
-  function placeFrontText(container, textStr, radius, yOffset, width) {
-    if (!container) return;
-    let el = container.querySelector('#ring-front-text');
-    if (!el) {
-      el = document.createElement('a-entity');
-      el.setAttribute('id', 'ring-front-text');
-      // lay flat on ring, we will rotate yaw to face camera
-      el.setAttribute('rotation', '-90 0 0');
-      el.setAttribute('face-camera-yaw', '');
-      el.setAttribute('preserve-size', '');
-      container.appendChild(el);
-    }
-    // compute angle to camera in marker-local coordinates
-    const markerObj = marker.object3D;
-    const camObj = document.querySelector('[camera]').object3D;
-    const cw = new AFRAME.THREE.Vector3();
-    camObj.getWorldPosition(cw);
-    const cwLocal = cw.clone();
-    markerObj.worldToLocal(cwLocal);
-    const angle = Math.atan2(cwLocal.z, cwLocal.x);
-    const x = radius * Math.cos(angle);
-    const z = radius * Math.sin(angle);
-    el.setAttribute('position', `${x} ${yOffset} ${z}`);
-    el.setAttribute('text', `value: ${textStr}; align: center; width: ${width}; color: #111; baseline: center`);
-  }
-
 document.addEventListener('DOMContentLoaded', function () {
   const marker = document.querySelector('#marker');
   if (!marker) return;
 
   const trigger = marker.querySelector('#trigger');
-  const ring = marker.querySelector('#ring');
+  const bomba = marker.querySelector('#bomba');
   if (!trigger) return;
 
   let visible = false;
 
   function showCube() {
-    // compute camera-facing direction and move back-plane to opposite side
+    // compute camera-facing direction and move model to a target in front of camera
     try {
       const markerObj = marker.object3D;
       const camObj = document.querySelector('[camera]').object3D;
@@ -194,16 +111,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const localTarget = worldTarget.clone();
       markerObj.worldToLocal(localTarget);
 
-      // show solid torus and populate circular text
-      const solid = marker.querySelector('#solid-ring');
-      const textContainer = marker.querySelector('#ring-text-container');
-      if (solid) {
-        solid.removeAttribute('animation__scale');
-        solid.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
-      }
-      if (textContainer) {
-        // place full sentence at the front of the ring facing camera
-        placeFrontText(textContainer, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.06, 0.9);
+      // spawn and animate bomba model
+      if (bomba) {
+        bomba.setAttribute('visible', 'true');
+        // ensure model plays animations (animation-mixer should loop)
+        bomba.removeAttribute('animation__scale');
+        bomba.removeAttribute('animation__pos');
+        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
+        bomba.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
@@ -215,33 +130,29 @@ document.addEventListener('DOMContentLoaded', function () {
         backPlane.setAttribute('position', `${backLocal.x} ${backLocal.y} ${backLocal.z}`);
       }
     } catch (e) {
-      // fallback: show solid ring
-      const solidFallback = marker.querySelector('#solid-ring');
-      const textContainerFallback = marker.querySelector('#ring-text-container');
-      if (solidFallback) {
-        solidFallback.removeAttribute('animation__scale');
-        solidFallback.setAttribute('animation__scale', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutCubic');
-      }
-      if (textContainerFallback) {
-        placeFrontText(textContainerFallback, 'Trotoar je uski i svi stoje tu na stanici pa je guzva i ljudi stoje ne glupim mjestima i sporo hodaju', 0.72, 0.06, 0.9);
+      // fallback: show bomba near trigger
+      if (bomba) {
+        bomba.setAttribute('visible', 'true');
+        bomba.removeAttribute('animation__scale');
+        bomba.removeAttribute('animation__pos');
+        bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 600; easing: easeOutElastic');
+        bomba.setAttribute('animation__pos', 'property: position; to: 0 0.45 0; dur: 600; easing: easeOutElastic');
       }
     }
     visible = true;
   }
 
   function hideCube() {
-    // also reset back-plane and hide ring
+    // also reset back-plane and hide bomba
     const backPlane = marker.querySelector('#back-plane');
     if (backPlane) backPlane.setAttribute('position', '0 0 0');
-    // hide solid ring and clear circular text
-    const solid = marker.querySelector('#solid-ring');
-    const textContainer = marker.querySelector('#ring-text-container');
-    if (solid) {
-      solid.removeAttribute('animation__scale');
-      solid.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 300; easing: easeOutQuad');
-    }
-    if (textContainer) {
-      while (textContainer.firstChild) textContainer.removeChild(textContainer.firstChild);
+    if (bomba) {
+      bomba.removeAttribute('animation__scale');
+      bomba.removeAttribute('animation__pos');
+      bomba.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 350; easing: easeOutQuad');
+      bomba.setAttribute('animation__pos', 'property: position; to: 0 0 0; dur: 350; easing: easeOutQuad');
+      // optionally hide after animation
+      setTimeout(() => { bomba.setAttribute('visible', 'false'); }, 360);
     }
     visible = false;
   }
