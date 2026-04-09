@@ -85,39 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const bomba = marker.querySelector('#bomba');
   if (!trigger) return;
 
-  // compute bomba bounding info after model loads so we can offset by its right side
-  if (bomba) {
-    bomba.addEventListener('model-loaded', () => {
-      try {
-        const obj = bomba.getObject3D('mesh') || bomba.object3D;
-        // Attempt to ensure model's 'top' points up. If model's local up isn't aligned, rotate it.
-        // Compute model local up in world space
-        const upVec = new AFRAME.THREE.Vector3(0, 1, 0).applyQuaternion(bomba.object3D.quaternion);
-        const worldUp = new AFRAME.THREE.Vector3(0, 1, 0);
-        const dot = upVec.dot(worldUp);
-        // If dot is low, the model's top is not facing world up; apply a 90deg correction around X
-        // Always apply +90° rotation on X and Y, and keep Z=90° as requested
-        bomba.__rotationCorrection = { x: 90, y: 90, z: 90 };
-        bomba.setAttribute('rotation', '90 90 90');
-
-        // temporarily set scale to 1 to measure natural bounds after rotation
-        const prevScale = bomba.object3D.scale.clone();
-        bomba.object3D.scale.set(1, 1, 1);
-        // update world matrices so bounding box is accurate
-        bomba.object3D.updateMatrixWorld(true);
-        const bbox = new AFRAME.THREE.Box3().setFromObject(bomba.object3D);
-        const size = bbox.getSize(new AFRAME.THREE.Vector3());
-        // final intended display scale when spawned
-        const finalScale = 0.6;
-        bomba.__halfWidth = (size.x / 2) * finalScale;
-        // restore previous scale (likely 0)
-        bomba.object3D.scale.copy(prevScale);
-      } catch (e) {
-        bomba.__halfWidth = 0;
-      }
-    });
-  }
-
   let visible = false;
 
   function showCube() {
@@ -136,23 +103,28 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       dir.normalize();
 
-      // choose a large distance so cube appears far from trigger in the camera direction
+      // choose a large distance so model appears far from trigger in the camera direction
       const targetDistance = 2.2; // meters in A-Frame units
-      const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
+      const forwardOffset = 0.6; // extra forward offset so model clears the trigger
+      const upOffset = 0.6; // raise model above marker so it's not attached by its bottom
 
-      // convert world target to marker-local coordinates
-      const localTarget = worldTarget.clone();
+      const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
+      // apply forward + upward offsets in world space
+      const worldTargetAdjusted = worldTarget.clone().add(dir.clone().multiplyScalar(forwardOffset));
+      worldTargetAdjusted.y += upOffset;
+
+      // convert adjusted world target to marker-local coordinates
+      const localTarget = worldTargetAdjusted.clone();
       markerObj.worldToLocal(localTarget);
 
-      // spawn and animate bomba model; offset so its right side touches the target
+      // spawn and animate bomba model
       if (bomba) {
         bomba.setAttribute('visible', 'true');
+        // ensure model plays animations (animation-mixer should loop)
         bomba.removeAttribute('animation__scale');
         bomba.removeAttribute('animation__pos');
-        const halfW = bomba.__halfWidth || 0;
-        const posX = localTarget.x - halfW;
         bomba.setAttribute('animation__scale', 'property: scale; to: 0.6 0.6 0.6; dur: 700; easing: easeOutElastic');
-        bomba.setAttribute('animation__pos', `property: position; to: ${posX} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
+        bomba.setAttribute('animation__pos', `property: position; to: ${localTarget.x} ${localTarget.y} ${localTarget.z}; dur: 700; easing: easeOutElastic`);
       }
 
       // position the back-plane on the opposite side of the marker (short distance)
