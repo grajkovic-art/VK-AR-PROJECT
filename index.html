@@ -39,7 +39,7 @@
     <a-plane id="back-plane" position="0 0 0" rotation="-90 0 0" width="0.8" height="0.8" material="color: #222; opacity: 0.06; side: double"></a-plane>
 
     <!-- 3D model (bomba) will spawn when trigger is activated -->
-    <a-entity id="bomba2" gltf-model="url(bomba.glb)" position="0 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
+    <a-entity id="bomba" gltf-model="url(bomba.glb)" position="0 0 0" scale="0 0 0" visible="false" animation-mixer="loop: repeat"></a-entity>
 
   </a-marker>
 
@@ -103,12 +103,18 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       dir.normalize();
 
-      // choose a large distance so cube appears far from trigger in the camera direction
+      // choose a large distance so model appears far from trigger in the camera direction
       const targetDistance = 2.2; // meters in A-Frame units
-      const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
+      const forwardOffset = 0.6; // extra forward offset so model clears the trigger
+      const upOffset = 0.6; // raise model above marker so it's not attached by its bottom
 
-      // convert world target to marker-local coordinates
-      const localTarget = worldTarget.clone();
+      const worldTarget = mw.clone().add(dir.multiplyScalar(targetDistance));
+      // apply forward + upward offsets in world space
+      const worldTargetAdjusted = worldTarget.clone().add(dir.clone().multiplyScalar(forwardOffset));
+      worldTargetAdjusted.y += upOffset;
+
+      // convert adjusted world target to marker-local coordinates
+      const localTarget = worldTargetAdjusted.clone();
       markerObj.worldToLocal(localTarget);
 
       // spawn and animate bomba model
